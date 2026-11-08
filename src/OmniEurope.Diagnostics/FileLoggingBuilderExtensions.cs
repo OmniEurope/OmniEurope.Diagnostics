@@ -45,6 +45,8 @@ public static class FileLoggingBuilderExtensions
             return builder;
 
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<FileLoggingOptions>, FileLoggingOptionsValidator>());
+        // The logs pages read this logger's folder when the host names none (OmniLogs:Directory left empty).
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IPostConfigureOptions<LogsOptions>, LogsOptionsFromFileLogging>());
         // A singleton of the container, so the host's shutdown disposes it and flushes the queue.
         services.TryAddEnumerable(ServiceDescriptor.Singleton<ILoggerProvider, FileLoggerProvider>());
         return builder;

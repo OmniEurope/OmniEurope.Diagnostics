@@ -142,6 +142,51 @@ public sealed class FileLoggingHostTests : IDisposable
         Assert.Contains(KeyValuePair.Create("Count", "3"), entry.Properties);
     }
 
+    [Fact]
+    public async Task TheLogsPages_WithoutAFolder_ReadTheLoggersFolderAndOnlyItsFiles()
+    {
+        File.WriteAllText(Path.Combine(_folder.Path, "other.json"), "{\"@t\":\"2026-11-08T12:00:00Z\",\"@m\":\"foreign\"}\n");
+        var host = Start(new() { ["OmniLogs:File:Directory"] = "." }, logging =>
+        {
+            logging.AddOmniFileLogging();
+            logging.Services.AddOmniLogs();
+        });
+        var options = host.Services.GetRequiredService<IOptions<LogsOptions>>().Value;
+        Assert.Equal((".", "app*.json"), (options.Directory, options.FilePattern));
+
+        Log(host, factory => factory.CreateLogger("Shop.Orders").LogError("payment refused"));
+
+        using var reader = StartReader();
+        using var scope = reader.Services.CreateScope();
+        var journal = scope.ServiceProvider.GetRequiredService<ILogJournal>();
+        var found = await journal.SearchAsync(new LogSearch { Text = "payment refused" }, TestContext.Current.CancellationToken);
+        Assert.Equal(LogSeverity.Error, Assert.Single(found.Entries).Entry.Level);
+        Assert.DoesNotContain(await journal.ListFilesAsync(TestContext.Current.CancellationToken), file => file.Name == "other.json");
+    }
+
+    [Fact]
+    public void AFolderTheHostSets_KeepsItsOwnFolderAndPattern()
+    {
+        var host = Start(new() { ["OmniLogs:File:Directory"] = "written", ["OmniLogs:Directory"] = "read", ["OmniLogs:FilePattern"] = "*.json" },
+            logging =>
+            {
+                logging.AddOmniFileLogging();
+                logging.Services.AddOmniLogs();
+            });
+        using (host)
+        {
+            var options = host.Services.GetRequiredService<IOptions<LogsOptions>>().Value;
+            Assert.Equal(("read", LogsOptions.DefaultFilePattern), (options.Directory, options.FilePattern));
+        }
+    }
+
+    // A second host over the same folder: the first one is disposed, so its file is complete.
+    private IHost StartReader() => Start(new() { ["OmniLogs:File:Directory"] = "." }, logging =>
+    {
+        logging.AddOmniFileLogging();
+        logging.Services.AddOmniLogs();
+    });
+
     private sealed class LoggingBuilder(IServiceCollection services) : ILoggingBuilder
     {
         public IServiceCollection Services { get; } = services;

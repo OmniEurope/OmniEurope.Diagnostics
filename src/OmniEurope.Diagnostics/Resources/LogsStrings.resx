@@ -6,7 +6,7 @@
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
   <data name="Title" xml:space="preserve"><value>Logs de l&apos;application</value></data>
   <data name="SourceBefore" xml:space="preserve"><value>Fichiers lus :</value></data>
-  <data name="SourceAfter" xml:space="preserve"><value>(Serilog, format JSON). Heures en UTC.</value></data>
+  <data name="SourceAfter" xml:space="preserve"><value>(lignes JSON). Heures en UTC.</value></data>
   <data name="Tabs" xml:space="preserve"><value>Onglets</value></data>
   <data name="TabJournal" xml:space="preserve"><value>Journal ({0})</value></data>
   <data name="TabExcluded" xml:space="preserve"><value>Lignes exclues ({0})</value></data>
@@ -32,7 +32,7 @@
   <data name="Download" xml:space="preserve"><value>Télécharger le fichier</value></data>
   <data name="Export" xml:space="preserve"><value>Exporter la sélection (CSV)</value></data>
   <data name="NoFilesBefore" xml:space="preserve"><value>Aucun fichier de log trouvé dans</value></data>
-  <data name="NoFilesAfter" xml:space="preserve"><value>. Vérifiez que Serilog écrit en JSON (CompactJsonFormatter) dans ce dossier.</value></data>
+  <data name="NoFilesAfter" xml:space="preserve"><value>. Vérifiez que l'application écrit ses journaux JSON dans ce dossier (AddOmniFileLogging ou un fichier JSON Serilog).</value></data>
   <data name="Truncated" xml:space="preserve"><value>Lecture plafonnée à {0} : seules les entrées les plus récentes sont lues, les plus anciennes ne sont pas affichées.</value></data>
   <data name="RulesUnreadableBefore" xml:space="preserve"><value>Le fichier de règles</value></data>
   <data name="RulesUnreadableAfter" xml:space="preserve"><value>est illisible : aucune règle n&apos;est appliquée. Corrigez-le ou supprimez-le.</value></data>

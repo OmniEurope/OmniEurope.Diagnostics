@@ -4,6 +4,28 @@ Notable changes to this project are documented here, following the Keep a Change
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-08
+
+### Added
+
+- File logger: `builder.Logging.AddOmniFileLogging(...)` writes the host's logs as compact Serilog JSON (CLEF) to
+  daily files, through a bounded background queue that never blocks a request (a saturated queue or a failed write
+  is counted and reported by one warning line), with optional retention and a size cap per file. Options in the
+  `OmniLogs:File` section, checked at startup; logging filters under the `OmniFile` alias. No Serilog dependency.
+- Public log reading API registered by `AddOmniLogs()`: `ILogJournal` (list, search, open, purge, every call
+  cancellable), `ILogRuleStore` (the exclusion rules, replaceable by the host's own storage, used by the pages and the
+  journal alike) and `ILogChanges` (a throttled change signal for live screens), with public `LogEntry`,
+  `LogSeverity`, `LogRule` and the search and result types.
+- Logs page: an empty `OmniLogs:Directory` reads the file logger's folder and only its files.
+- Logs page: flat JSON lines (`Timestamp`, `Level`, `Message`, `SourceContext`, `Exception`, `CorrelationId` at the
+  top level) are read.
+
+### Changed
+
+- Logs page: the levels `Trace` and `Critical` read as Verbose and Fatal instead of Information; a `JsonFormatter`
+  line without a `Properties` object shows its other top-level fields as properties.
+- Logs page: the pages read through `ILogJournal` and `ILogRuleStore`; reading stops when the request is aborted.
+
 ### Fixed
 
 - Logs page: a hole format read from a log file is applied only up to 32 characters and two precision digits

@@ -79,9 +79,18 @@ date, a limit too low for the chosen window) is refused when the application sta
 
 ## Logs page
 
-A second page reads the host's own Serilog files (the package does not depend on Serilog: the host writes the
-files, the page reads them). The host writes JSON lines to a folder, for instance with `Serilog.Sinks.File` and
-`Serilog.Formatting.Compact`:
+A second page reads the host's JSON log files. The package writes them itself, or the host writes them with
+Serilog; the package depends on neither Serilog nor any other logging library.
+
+With the package's own file logger:
+
+```csharp
+builder.Logging.AddOmniFileLogging("logs");                 // or the OmniLogs:File section of the configuration
+builder.Services.AddOmniLogs();                             // reads the logger's folder when OmniLogs:Directory is empty
+app.MapOmniLogs().RequireAuthorization("Admin");            // the pages, under /logs
+```
+
+With Serilog, for instance `Serilog.Sinks.File` and `Serilog.Formatting.Compact`:
 
 ```csharp
 builder.Host.UseSerilog((context, configuration) => configuration
@@ -104,8 +113,11 @@ group: one `.RequireAuthorization(...)` covers the journal, the download, the ru
   view, nothing is deleted. The rules are saved as JSON in the rules file of the folder, written atomically.
 - **Purge** (`POST /logs/purge`): deletes the log files older than a number of days, after a confirmation box; it
   only touches the files of the folder matching the pattern, never the rules file.
-- **Formats**: Serilog's compact JSON (CLEF: `@t`, `@l`, `@mt`, `@m`, `@x`, `@tr` and the properties) and the plain
-  `JsonFormatter` (`Timestamp`, `Level`, `MessageTemplate`, `RenderedMessage`, `Exception`, `Properties`). The
+- **Formats**: Serilog's compact JSON (CLEF: `@t`, `@l`, `@mt`, `@m`, `@x`, `@tr` and the properties), the plain
+  `JsonFormatter` (`Timestamp`, `Level`, `MessageTemplate`, `RenderedMessage`, `Exception`, `Properties`) and a flat
+  JSON line (`Timestamp`, `Level`, `Message`, `SourceContext`, `Exception`, `CorrelationId` and the other
+  properties at the top level). Levels are Serilog's names or Microsoft's (`Trace` reads as Verbose, `Critical` as
+  Fatal). The
   message is the rendered one when the file has it, otherwise the template with its properties substituted
   (strings without quotes, `{Name:format}` for numbers and dates, invariant culture). A line that is not such an
   event is skipped and counted on the page; a last line still being written is left for the next read.
@@ -119,14 +131,53 @@ The `OmniLogs` section of the host configuration, then `AddOmniLogs(o => ...)`, 
 
 | Setting | Default | Purpose |
 |---|---|---|
-| `Directory` | required | The folder the Serilog file sink writes to; relative to the content root. Only its own files are read. |
-| `FilePattern` | `*.json` | The log files of the folder (file-name wildcards, no path). |
+| `Directory` | required, or the file logger's | The folder the log files are written to; relative to the content root. Only its own files are read. Left empty with `AddOmniFileLogging()`, it is the logger's folder. |
+| `FilePattern` | `*.json` | The log files of the folder (file-name wildcards, no path). With the logger's folder, `{FilePrefix}*.json`. |
 | `RulesFile` | `omni-log-rules.json` | The rules file, inside the folder; never listed as a log, never purged. |
 | `PageSize` | `50` | Entries per page, 1 to 1000. |
 | `MaxBytesRead` | `16777216` (16 MiB) | Log text read per request, 4 KiB to 1 GiB: newest files first, a large file from its end; the page says when older entries were left out. |
 | `FollowRefreshSeconds` | `5` | Reload period of follow mode, 1 to 3600. |
 
 A missing folder setting or an out-of-range value is refused when the application starts.
+
+### File logger
+
+`builder.Logging.AddOmniFileLogging(...)` adds an `ILoggerProvider` (alias `OmniFile`, so the usual filters apply:
+`Logging:OmniFile:LogLevel:Default`) that writes one JSON object per line in the compact Serilog format: `@t`,
+`@l`, `@mt`, `@m`, `@x`, `@tr`, `@sp`, the category as `SourceContext`, `EventId`, the entry's properties and its
+scopes' properties (ASP.NET Core adds `RequestId`, `RequestPath`...) at the top level. Logging only queues the line:
+one background task writes it, so a request never waits for the disk; a full queue or a failed write loses the
+entry, counts it and reports the count in one warning line once writing works again. Nothing is ever thrown into
+the application.
+
+Files are named `{FilePrefix}[-{Instance}]-yyyyMMdd.json` (UTC day), continued in `.1.json`, `.2.json`... above the
+size cap; two processes sharing a folder give themselves different `Instance` values. The `OmniLogs:File` section,
+then `AddOmniFileLogging(o => ...)`, which has the last word:
+
+| Setting | Default | Purpose |
+|---|---|---|
+| `Directory` | required | The folder the files are written to; relative to the content root. |
+| `FilePrefix` | `app` | The start of every file name: letters, digits, `-`, `_`, `.`, 64 at most. |
+| `Instance` | none | Added to the file name, cleaned to a host-name-like token. |
+| `MinLevel` | `Information` | The lowest level written. |
+| `RetentionDays` | `30` | Files of this prefix (every instance) older than that are deleted, at most once an hour; `0` never deletes. |
+| `MaxFileBytes` | `104857600` (100 MiB) | Size above which the day continues in the next numbered file, 4 KiB to 1 GiB. |
+| `QueueCapacity` | `8192` | Entries waiting to be written, 16 to 1048576. |
+
+### Reading the logs in your own screens
+
+`AddOmniLogs()` also registers what the pages are built on, for a host that shows the logs in its own UI:
+
+- **`ILogJournal`** (scoped): `ListFilesAsync`, `SearchAsync(LogSearch)` (file, minimum level, dates, text, journal
+  or excluded tab; every matching entry newest first, within `MaxBytesRead`, with the tab counts, the rules, the
+  truncation flag and the unreadable lines), `OpenFileAsync` (a shared read stream, null when the name is not a
+  listed file) and `PurgeAsync`. The caller pages and sorts the entries.
+- **`ILogRuleStore`**: the exclusion rules (load, add, enable or disable, delete). The default keeps them in the
+  rules file; a host that registers its own (a database, say), before or after `AddOmniLogs()`, gets it used by the
+  pages and by the journal alike.
+- **`ILogChanges`**: a `Changed` event raised, at most every two seconds and once more at the end of a busy period,
+  when a log file of the folder is created, written, renamed or deleted. The folder is watched only while someone
+  listens; a missing folder is looked for again every ten seconds. Handlers must not throw.
 
 ## Dependencies
 

@@ -6,7 +6,7 @@
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
   <data name="Title" xml:space="preserve"><value>Application logs</value></data>
   <data name="SourceBefore" xml:space="preserve"><value>Files read:</value></data>
-  <data name="SourceAfter" xml:space="preserve"><value>(Serilog, JSON format). Times in UTC.</value></data>
+  <data name="SourceAfter" xml:space="preserve"><value>(JSON lines). Times in UTC.</value></data>
   <data name="Tabs" xml:space="preserve"><value>Tabs</value></data>
   <data name="TabJournal" xml:space="preserve"><value>Journal ({0})</value></data>
   <data name="TabExcluded" xml:space="preserve"><value>Excluded lines ({0})</value></data>
@@ -32,7 +32,7 @@
   <data name="Download" xml:space="preserve"><value>Download the file</value></data>
   <data name="Export" xml:space="preserve"><value>Export the selection (CSV)</value></data>
   <data name="NoFilesBefore" xml:space="preserve"><value>No log file found in</value></data>
-  <data name="NoFilesAfter" xml:space="preserve"><value>. Check that Serilog writes JSON (CompactJsonFormatter) to this folder.</value></data>
+  <data name="NoFilesAfter" xml:space="preserve"><value>. Check that the application writes its JSON logs to this folder (AddOmniFileLogging or a Serilog JSON file sink).</value></data>
   <data name="Truncated" xml:space="preserve"><value>Reading capped at {0}: only the most recent entries are read, older ones are not shown.</value></data>
   <data name="RulesUnreadableBefore" xml:space="preserve"><value>The rules file</value></data>
   <data name="RulesUnreadableAfter" xml:space="preserve"><value>cannot be read: no rule is applied. Fix it or delete it.</value></data>

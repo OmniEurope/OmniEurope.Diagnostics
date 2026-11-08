@@ -12,7 +12,7 @@ internal sealed class LogsOptionsValidator : IValidateOptions<LogsOptions>
         ArgumentNullException.ThrowIfNull(options);
         var failures = new List<string>();
         if (string.IsNullOrWhiteSpace(options.Directory))
-            failures.Add("OmniLogs:Directory is required: the folder the host's Serilog file sink writes to.");
+            failures.Add("OmniLogs:Directory is required: the folder the host's log files are written to (left empty, it defaults to the folder of AddOmniFileLogging()).");
         if (!IsFileNamePattern(options.FilePattern))
             failures.Add($"OmniLogs:FilePattern '{options.FilePattern}' must be a file-name pattern without a path, such as *.json.");
         if (!LogDirectory.IsBareName(options.RulesFile))
