@@ -6,8 +6,8 @@
     <Version>1.0.0</Version>
     <Authors>OmniEurope contributors</Authors>
     <Company>OmniEurope</Company>
-    <Description>A minimal, unstyled ASP.NET Core page that measures the request performance of the site it is mounted in: the slowest calls and per-route percentiles over a configurable window, with a collector memory budget of 2 MiB by default.</Description>
-    <PackageTags>aspnetcore;blazor;performance;diagnostics;eupl</PackageTags>
+    <Description>Minimal, unstyled ASP.NET Core diagnostics pages for the site they are mounted in: a request performance page (the slowest calls and per-route percentiles over a configurable window, with a collector memory budget of 2 MiB by default) and an application logs page over the host's Serilog JSON files (filters, exclusion rules, CSV export, purge).</Description>
+    <PackageTags>aspnetcore;blazor;performance;diagnostics;logs;serilog;eupl</PackageTags>
     <PackageLicenseExpression>EUPL-1.2</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <RepositoryType>git</RepositoryType>
@@ -18,7 +18,7 @@
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <!-- The texts of Resources/PerformanceStrings.resx are French; English ships as a satellite. -->
+    <!-- The texts of Resources/*Strings.resx are French; English ships as a satellite. -->
     <NeutralLanguage>fr</NeutralLanguage>
   </PropertyGroup>
 

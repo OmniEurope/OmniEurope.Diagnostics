@@ -4,6 +4,15 @@ Notable changes to this project are documented here, following the Keep a Change
 
 ## [Unreleased]
 
+### Added
+
+- The logs page: `AddOmniLogs()` and `MapOmniLogs()` serve, under `/logs`, the host's Serilog JSON files (compact
+  CLEF and plain `JsonFormatter`) as unstyled HTML pages: a journal newest first with filters (file, minimum level,
+  dates, text), entry details, follow mode, CSV export and file download; exclusion rules that move matching entries
+  to an excluded tab without deleting anything; a purge of old log files. Options in the `OmniLogs` section, checked
+  at startup; bounded reading (`MaxBytesRead`, 16 MiB by default); bare listed file names only; antiforgery-checked
+  posts. The pages must be protected with `.RequireAuthorization(...)`.
+
 ### Fixed
 
 - A `SlowestCount` and a `Window` whose slowest-list reservation overflows are refused at construction instead of

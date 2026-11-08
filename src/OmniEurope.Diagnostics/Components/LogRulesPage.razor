@@ -1,0 +1,127 @@
+@* SPDX-License-Identifier: EUPL-1.2 *@
+@namespace OmniEurope.Diagnostics.Components
+@using OmniEurope.Diagnostics.Logs
+@* The exclusion rules and the purge, a complete HTML document without stylesheet, script, class or style. Every form
+   posts with the antiforgery token the endpoint issued; the endpoint answers each post with a redirect here. *@
+<!DOCTYPE html>
+<html lang="@LogsFormat.Language">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>@L["RulesTitle"]</title>
+</head>
+<body>
+<main>
+    <h1>@L["RulesTitle"]</h1>
+    <p><a href="@Links.Journal(new LogQuery())">@L["BackToJournal"]</a></p>
+    @if (DoneText is { } done)
+    {
+        <p role="status">@done</p>
+    }
+    @if (Model.Purged is { } purged)
+    {
+        <p role="status">@Format("Purged", LogsFormat.Count(purged.Deleted))</p>
+        @if (purged.Failed > 0)
+        {
+            <p role="alert">@Format("PurgeFailed", LogsFormat.Count(purged.Failed))</p>
+        }
+    }
+    <p>@L["RulesScope"] <code>@Model.RulesLabel</code>.</p>
+    @if (Model.RulesError is not null)
+    {
+        <p role="alert">@L["RulesUnreadableBefore"] <code>@Model.RulesLabel</code> @L["RulesUnreadableAfter"]</p>
+    }
+    @if (Model.Truncated)
+    {
+        <p>@L["TruncatedCounts"]</p>
+    }
+
+    <form method="post" action="@Links.Rules" aria-labelledby="rule-new">
+        <fieldset>
+            <legend id="rule-new">@L["NewRule"]</legend>
+            <input type="hidden" name="@Model.TokenField" value="@Model.Token" />
+            <p>
+                <label for="pattern">@L["PatternLabel"]</label><br />
+                <input id="pattern" name="pattern" required maxlength="@LogRule.MaxLength" size="50" value="@Model.Pattern" />
+            </p>
+            <p>
+                <label for="category">@L["CategoryLabel"]</label><br />
+                <input id="category" name="category" maxlength="@LogRule.MaxLength" size="50" value="@Model.Category" />
+            </p>
+            @if (Model.PrefillCount is { } count)
+            {
+                <p>@Format("PrefillCount", LogsFormat.Count(count))</p>
+            }
+            <p><button type="submit" name="action" value="add">@L["AddRule"]</button></p>
+        </fieldset>
+    </form>
+
+    <section aria-labelledby="rules-list">
+        <h2 id="rules-list">@L["ExistingRules"]</h2>
+        @if (Model.Rules.Count == 0)
+        {
+            <p>@L["NoRules"]</p>
+        }
+        else
+        {
+            <table>
+                <thead>
+                    <tr>
+                        <th scope="col">@L["PatternColumn"]</th>
+                        <th scope="col">@L["Category"]</th>
+                        <th scope="col">@L["CountColumn"]</th>
+                        <th scope="col">@L["StateColumn"]</th>
+                        <th scope="col">@L["Actions"]</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.Rules)
+                    {
+                        var rule = item.Rule;
+                        var id = rule.Id.ToString(CultureInfo.InvariantCulture);
+                        <tr>
+                            <td><code>@rule.Pattern</code></td>
+                            <td>@if (rule.Category is not null) { <code>@rule.Category</code> } else { @L["AllCategories"] }</td>
+                            <td>@LogsFormat.Count(item.Count)</td>
+                            <td>@(rule.Enabled ? L["Active"] : L["Inactive"])</td>
+                            <td>
+                                <form method="post" action="@Links.Rules">
+                                    <input type="hidden" name="@Model.TokenField" value="@Model.Token" />
+                                    @if (rule.Enabled)
+                                    {
+                                        <button type="submit" name="action" value="@("disable:" + id)">@L["Disable"]</button>
+                                    }
+                                    else
+                                    {
+                                        <button type="submit" name="action" value="@("enable:" + id)">@L["Enable"]</button>
+                                    }
+                                    @(" ")
+                                    <button type="submit" name="action" value="@("delete:" + id)">@L["Delete"]</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </section>
+
+    <section aria-labelledby="purge">
+        <h2 id="purge">@L["PurgeTitle"]</h2>
+        <form method="post" action="@Links.Purge">
+            <input type="hidden" name="@Model.TokenField" value="@Model.Token" />
+            <p>
+                <label for="days">@L["PurgeDaysBefore"]</label>
+                <input id="days" name="days" type="number" min="1" max="@LogsEndpointHandlers.MaxPurgeDays" value="@Model.PurgeDays" size="4" required /> @L["PurgeDaysAfter"]
+            </p>
+            <p>
+                <input id="confirm" name="confirm" type="checkbox" required />
+                <label for="confirm">@Format("PurgeConfirm", Model.PurgeDays, LogsFormat.Count(Model.PurgeCount), LogsFormat.Size(Model.PurgeBytes, L))</label>
+            </p>
+            <p><button type="submit" name="action" value="purge">@L["Purge"]</button></p>
+        </form>
+    </section>
+</main>
+</body>
+</html>

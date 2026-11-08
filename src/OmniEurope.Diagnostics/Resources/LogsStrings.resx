@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="Title" xml:space="preserve"><value>Logs de l&apos;application</value></data>
+  <data name="SourceBefore" xml:space="preserve"><value>Fichiers lus :</value></data>
+  <data name="SourceAfter" xml:space="preserve"><value>(Serilog, format JSON). Heures en UTC.</value></data>
+  <data name="Tabs" xml:space="preserve"><value>Onglets</value></data>
+  <data name="TabJournal" xml:space="preserve"><value>Journal ({0})</value></data>
+  <data name="TabExcluded" xml:space="preserve"><value>Lignes exclues ({0})</value></data>
+  <data name="TabRules" xml:space="preserve"><value>Règles d&apos;exclusion ({0})</value></data>
+  <data name="ExcludedScope" xml:space="preserve"><value>Lignes écartées du journal par une règle active. Rien n&apos;est supprimé : désactiver la règle les remet dans le journal.</value></data>
+  <data name="Filters" xml:space="preserve"><value>Filtres</value></data>
+  <data name="File" xml:space="preserve"><value>Fichier</value></data>
+  <data name="AllFiles" xml:space="preserve"><value>Tous les fichiers</value></data>
+  <data name="Level" xml:space="preserve"><value>Niveau minimal</value></data>
+  <data name="AllLevels" xml:space="preserve"><value>Tous les niveaux</value></data>
+  <data name="From" xml:space="preserve"><value>Du</value></data>
+  <data name="To" xml:space="preserve"><value>au</value></data>
+  <data name="Text" xml:space="preserve"><value>Texte</value></data>
+  <data name="TextPlaceholder" xml:space="preserve"><value>message, catégorie, exception ou id de corrélation</value></data>
+  <data name="Filter" xml:space="preserve"><value>Filtrer</value></data>
+  <data name="ClearFilters" xml:space="preserve"><value>Effacer les filtres</value></data>
+  <data name="ReadAt" xml:space="preserve"><value>Mise à jour : lue à {0}.</value></data>
+  <data name="TimeFormat" xml:space="preserve"><value>HH:mm:ss</value></data>
+  <data name="Follow" xml:space="preserve"><value>Suivre en direct</value></data>
+  <data name="FollowPeriod" xml:space="preserve"><value>(recharge toutes les {0} s)</value></data>
+  <data name="Following" xml:space="preserve"><value>Suivi en direct, recharge toutes les {0} s.</value></data>
+  <data name="StopFollow" xml:space="preserve"><value>Arrêter le suivi</value></data>
+  <data name="Download" xml:space="preserve"><value>Télécharger le fichier</value></data>
+  <data name="Export" xml:space="preserve"><value>Exporter la sélection (CSV)</value></data>
+  <data name="NoFilesBefore" xml:space="preserve"><value>Aucun fichier de log trouvé dans</value></data>
+  <data name="NoFilesAfter" xml:space="preserve"><value>. Vérifiez que Serilog écrit en JSON (CompactJsonFormatter) dans ce dossier.</value></data>
+  <data name="Truncated" xml:space="preserve"><value>Lecture plafonnée à {0} : seules les entrées les plus récentes sont lues, les plus anciennes ne sont pas affichées.</value></data>
+  <data name="RulesUnreadableBefore" xml:space="preserve"><value>Le fichier de règles</value></data>
+  <data name="RulesUnreadableAfter" xml:space="preserve"><value>est illisible : aucune règle n&apos;est appliquée. Corrigez-le ou supprimez-le.</value></data>
+  <data name="FileIssueBefore" xml:space="preserve"><value>Le fichier</value></data>
+  <data name="FileFailed" xml:space="preserve"><value>n&apos;a pas pu être lu.</value></data>
+  <data name="FileUnreadable" xml:space="preserve"><value>n&apos;a pas pu être lu : {0} lignes illisibles ignorées</value></data>
+  <data name="FileUnreadableOne" xml:space="preserve"><value>n&apos;a pas pu être lu : 1 ligne illisible ignorée</value></data>
+  <data name="UnreadableLines" xml:space="preserve"><value>(ligne {0})</value></data>
+  <data name="Entries" xml:space="preserve"><value>Entrées</value></data>
+  <data name="Range" xml:space="preserve"><value>Lignes {0} à {1} sur {2}, de la plus récente à la plus ancienne.</value></data>
+  <data name="NoEntries" xml:space="preserve"><value>Aucune entrée ne correspond aux filtres.</value></data>
+  <data name="Date" xml:space="preserve"><value>Date</value></data>
+  <data name="LevelColumn" xml:space="preserve"><value>Niveau</value></data>
+  <data name="Category" xml:space="preserve"><value>Catégorie</value></data>
+  <data name="Message" xml:space="preserve"><value>Message</value></data>
+  <data name="Correlation" xml:space="preserve"><value>Corrélation</value></data>
+  <data name="Rule" xml:space="preserve"><value>Règle</value></data>
+  <data name="Actions" xml:space="preserve"><value>Actions</value></data>
+  <data name="View" xml:space="preserve"><value>Voir</value></data>
+  <data name="Exclude" xml:space="preserve"><value>Exclure…</value></data>
+  <data name="Pagination" xml:space="preserve"><value>Pagination</value></data>
+  <data name="Previous" xml:space="preserve"><value>Précédent</value></data>
+  <data name="Next" xml:space="preserve"><value>Suivant</value></data>
+  <data name="PageOf" xml:space="preserve"><value>Page {0} sur {1}</value></data>
+  <data name="Details" xml:space="preserve"><value>Détail des entrées</value></data>
+  <data name="DetailsScope" xml:space="preserve"><value>Chaque entrée s&apos;ouvre sur place ; le lien « Voir » d&apos;une ligne mène à son détail.</value></data>
+  <data name="Utc" xml:space="preserve"><value>UTC</value></data>
+  <data name="Request" xml:space="preserve"><value>Requête</value></data>
+  <data name="LineNumber" xml:space="preserve"><value>, ligne {0}</value></data>
+  <data name="SameRequest" xml:space="preserve"><value>toutes les entrées de cette requête</value></data>
+  <data name="Exception" xml:space="preserve"><value>Exception</value></data>
+  <data name="Properties" xml:space="preserve"><value>Propriétés</value></data>
+  <data name="Name" xml:space="preserve"><value>Nom</value></data>
+  <data name="Value" xml:space="preserve"><value>Valeur</value></data>
+  <data name="DateFormat" xml:space="preserve"><value>dd&apos;/&apos;MM&apos;/&apos;yyyy HH:mm:ss&apos;,&apos;fff</value></data>
+  <data name="SizeKilobytes" xml:space="preserve"><value>{0} Ko</value></data>
+  <data name="SizeMegabytes" xml:space="preserve"><value>{0} Mo</value></data>
+  <data name="RulesTitle" xml:space="preserve"><value>Règles d&apos;exclusion</value></data>
+  <data name="BackToJournal" xml:space="preserve"><value>Retour au journal</value></data>
+  <data name="RulesScope" xml:space="preserve"><value>Une règle range dans « Lignes exclues » les lignes dont le message contient le texte donné, et, si une catégorie est indiquée, seulement dans cette catégorie. Les règles sont enregistrées dans</value></data>
+  <data name="TruncatedCounts" xml:space="preserve"><value>Les comptes portent sur les entrées les plus récentes seulement : la lecture des fichiers est plafonnée.</value></data>
+  <data name="NewRule" xml:space="preserve"><value>Nouvelle règle</value></data>
+  <data name="PatternLabel" xml:space="preserve"><value>Texte du message (obligatoire)</value></data>
+  <data name="CategoryLabel" xml:space="preserve"><value>Catégorie (facultatif)</value></data>
+  <data name="PrefillCount" xml:space="preserve"><value>Cette règle écarterait {0} lignes des fichiers actuels.</value></data>
+  <data name="AddRule" xml:space="preserve"><value>Ajouter la règle</value></data>
+  <data name="ExistingRules" xml:space="preserve"><value>Règles existantes</value></data>
+  <data name="NoRules" xml:space="preserve"><value>Aucune règle pour l&apos;instant.</value></data>
+  <data name="PatternColumn" xml:space="preserve"><value>Texte du message</value></data>
+  <data name="CountColumn" xml:space="preserve"><value>Lignes écartées</value></data>
+  <data name="StateColumn" xml:space="preserve"><value>État</value></data>
+  <data name="AllCategories" xml:space="preserve"><value>(toutes)</value></data>
+  <data name="Active" xml:space="preserve"><value>Active</value></data>
+  <data name="Inactive" xml:space="preserve"><value>Désactivée</value></data>
+  <data name="Enable" xml:space="preserve"><value>Activer</value></data>
+  <data name="Disable" xml:space="preserve"><value>Désactiver</value></data>
+  <data name="Delete" xml:space="preserve"><value>Supprimer</value></data>
+  <data name="Done_added" xml:space="preserve"><value>Règle ajoutée.</value></data>
+  <data name="Done_enabled" xml:space="preserve"><value>Règle activée.</value></data>
+  <data name="Done_disabled" xml:space="preserve"><value>Règle désactivée.</value></data>
+  <data name="Done_deleted" xml:space="preserve"><value>Règle supprimée.</value></data>
+  <data name="Purged" xml:space="preserve"><value>Purge effectuée : {0} fichiers supprimés.</value></data>
+  <data name="PurgeFailed" xml:space="preserve"><value>{0} fichiers n&apos;ont pas pu être supprimés (encore ouverts ou en lecture seule).</value></data>
+  <data name="PurgeTitle" xml:space="preserve"><value>Purger les anciens fichiers</value></data>
+  <data name="PurgeDaysBefore" xml:space="preserve"><value>Supprimer les fichiers de plus de</value></data>
+  <data name="PurgeDaysAfter" xml:space="preserve"><value>jours.</value></data>
+  <data name="PurgeConfirm" xml:space="preserve"><value>Je confirme : {1} fichiers ({2}) de plus de {0} jours seront supprimés définitivement.</value></data>
+  <data name="Purge" xml:space="preserve"><value>Purger</value></data>
+  <data name="RefusedToken" xml:space="preserve"><value>Jeton anti-falsification absent ou invalide : rechargez la page et recommencez.</value></data>
+  <data name="RefusedAction" xml:space="preserve"><value>Action inconnue.</value></data>
+  <data name="RefusedPattern" xml:space="preserve"><value>Le texte du message est obligatoire, et le texte comme la catégorie font 1 000 caractères au plus.</value></data>
+  <data name="RefusedConfirm" xml:space="preserve"><value>Cochez la case de confirmation pour purger.</value></data>
+  <data name="RefusedDays" xml:space="preserve"><value>Le nombre de jours doit être un entier d&apos;au moins 1.</value></data>
+</root>

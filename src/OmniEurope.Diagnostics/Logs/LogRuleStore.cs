@@ -1,0 +1,122 @@
+// SPDX-License-Identifier: EUPL-1.2
+using System.Text.Json;
+
+namespace OmniEurope.Diagnostics.Logs;
+
+/// <summary>
+/// An exclusion rule: the entries whose rendered message contains <paramref name="Pattern"/> (ignoring case) and,
+/// when <paramref name="Category"/> is set, whose category is exactly it (ignoring case) leave the journal for the
+/// excluded tab while the rule is enabled. A rule only filters the view: nothing is deleted.
+/// </summary>
+/// <param name="Id">The rule's number, unique in the file.</param>
+/// <param name="Pattern">The text the message contains.</param>
+/// <param name="Category">The only category it applies to, or null for every category.</param>
+/// <param name="Enabled">Whether it excludes anything.</param>
+internal sealed record LogRule(int Id, string Pattern, string? Category, bool Enabled)
+{
+    /// <summary>The longest pattern or category a rule accepts.</summary>
+    public const int MaxLength = 1000;
+
+    /// <summary>Whether the rule's text and category describe <paramref name="entry"/>, enabled or not.</summary>
+    public bool Matches(LogEntry entry) =>
+        entry.Message.Contains(Pattern, StringComparison.OrdinalIgnoreCase)
+        && (Category is null || string.Equals(entry.Category, Category, StringComparison.OrdinalIgnoreCase));
+}
+
+/// <summary>The rules as read: the list, or why the file could not be read (then none applies).</summary>
+/// <param name="Rules">The rules, in file order.</param>
+/// <param name="Error">Null when the file was read or is absent; the reason otherwise.</param>
+/// <param name="NextId">The id the next rule gets: ids are never reused, so a stale form never reaches a newer rule.</param>
+internal sealed record LogRuleSet(IReadOnlyList<LogRule> Rules, string? Error, int NextId = 1);
+
+/// <summary>What a change to the rules came to.</summary>
+internal enum LogRuleUpdate
+{
+    /// <summary>Saved.</summary>
+    Saved,
+
+    /// <summary>No rule has the id the change named; nothing was written.</summary>
+    NotFound,
+
+    /// <summary>The file exists but cannot be read: it is never overwritten, nothing was written.</summary>
+    Unreadable,
+}
+
+/// <summary>
+/// The rules file of <see cref="LogsOptions.RulesFile"/>, as JSON. Every change reads, changes and writes the file
+/// under one lock, so concurrent posts never lose a rule; it is written to a temporary file of the same folder and
+/// moved over the old one, so a reader never sees half a file. An unreadable file is reported, never replaced.
+/// </summary>
+internal sealed class LogRuleStore(LogDirectory directory)
+{
+    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { WriteIndented = true };
+    private readonly Lock _gate = new();
+
+    /// <summary>Reads the rules; an absent file has none.</summary>
+    public LogRuleSet Load()
+    {
+        if (!File.Exists(directory.RulesPath))
+            return new LogRuleSet([], null);
+        try
+        {
+            using var stream = LogFileReader.OpenShared(directory.RulesPath);
+            var document = JsonSerializer.Deserialize<RulesDocument>(stream, Json);
+            var rules = (document?.Rules ?? []).Where(rule => !string.IsNullOrWhiteSpace(rule?.Pattern)).ToList();
+            var next = Math.Max(document?.NextId ?? 1, AfterLast(rules));
+            return new LogRuleSet(rules, null, next);
+        }
+        catch (Exception exception) when (exception is JsonException or IOException or UnauthorizedAccessException)
+        {
+            return new LogRuleSet([], exception.Message);
+        }
+    }
+
+    /// <summary>Adds a rule, enabled, numbered after the highest id.</summary>
+    public LogRuleUpdate Add(string pattern, string? category) =>
+        Update((rules, next) =>
+        {
+            rules.Add(new LogRule(next, pattern, category, Enabled: true));
+            return true;
+        });
+
+    /// <summary>Enables or disables the rule <paramref name="id"/>.</summary>
+    public LogRuleUpdate SetEnabled(int id, bool enabled) =>
+        Update((rules, _) =>
+        {
+            var index = rules.FindIndex(rule => rule.Id == id);
+            if (index < 0)
+                return false;
+            rules[index] = rules[index] with { Enabled = enabled };
+            return true;
+        });
+
+    /// <summary>Deletes the rule <paramref name="id"/>.</summary>
+    public LogRuleUpdate Delete(int id) => Update((rules, _) => rules.RemoveAll(rule => rule.Id == id) > 0);
+
+    private LogRuleUpdate Update(Func<List<LogRule>, int, bool> change)
+    {
+        lock (_gate)
+        {
+            var set = Load();
+            if (set.Error is not null)
+                return LogRuleUpdate.Unreadable;
+            var rules = set.Rules.ToList();
+            if (!change(rules, set.NextId))
+                return LogRuleUpdate.NotFound;
+            Save(rules, Math.Max(set.NextId, AfterLast(rules)));
+            return LogRuleUpdate.Saved;
+        }
+    }
+
+    private void Save(List<LogRule> rules, int nextId)
+    {
+        Directory.CreateDirectory(directory.FullPath);
+        var temporary = Path.Combine(directory.FullPath, $"{directory.RulesFile}.{Guid.NewGuid():N}.tmp");
+        File.WriteAllText(temporary, JsonSerializer.Serialize(new RulesDocument(nextId, rules), Json));
+        File.Move(temporary, directory.RulesPath, overwrite: true);
+    }
+
+    private static int AfterLast(List<LogRule> rules) => rules.Select(rule => rule.Id).DefaultIfEmpty(0).Max() + 1;
+
+    private sealed record RulesDocument(int? NextId, List<LogRule>? Rules);
+}

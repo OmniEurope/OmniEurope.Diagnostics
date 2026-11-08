@@ -1,8 +1,9 @@
 <!-- SPDX-License-Identifier: EUPL-1.2 -->
 # OmniEurope.Diagnostics
 
-A Razor class library that adds **a request performance page** to an ASP.NET Core application, kept to the bare
-minimum: **no theme, no styling, no third-party dependency**, with a collector memory budget of 2 MiB by default.
+A Razor class library that adds **a request performance page** and **an application logs page** to an ASP.NET Core
+application, kept to the bare minimum: **no theme, no styling, no third-party dependency**, with a collector memory
+budget of 2 MiB by default.
 A single NuGet package, licensed under EUPL-1.2.
 
 ## Usage
@@ -75,6 +76,57 @@ date, a limit too low for the chosen window) is refused when the application sta
 - Nothing beyond the page: the page provided does not refresh itself (reloading it reads the figures again; the
   signal above serves the application's own pages), no history beyond the window or across a restart, no data sent
   anywhere.
+
+## Logs page
+
+A second page reads the host's own Serilog files (the package does not depend on Serilog: the host writes the
+files, the page reads them). The host writes JSON lines to a folder, for instance with `Serilog.Sinks.File` and
+`Serilog.Formatting.Compact`:
+
+```csharp
+builder.Host.UseSerilog((context, configuration) => configuration
+    .ReadFrom.Configuration(context.Configuration)
+    .WriteTo.File(new CompactJsonFormatter(), "logs/app-.json", rollingInterval: RollingInterval.Day));
+
+builder.Services.AddOmniLogs(o => o.Directory = "logs");    // or the OmniLogs section of the configuration
+app.MapOmniLogs().RequireAuthorization("Admin");            // the pages, under /logs
+```
+
+**The pages show the application's logs and delete files: they MUST be protected.** `MapOmniLogs` returns a route
+group: one `.RequireAuthorization(...)` covers the journal, the download, the rules and the purge.
+
+- **Journal** (`GET /logs`): entries newest first, one page at a time, with a GET filter form (file, minimum level,
+  from and to in UTC, text searched in the message, the category, the exception and the correlation id), a detail
+  per entry (message, exception, properties, a link to every entry of the same request), follow mode (`?follow=1`,
+  the page reloads itself), the download of the selected file and the CSV export of the whole selection.
+- **Exclusion rules** (`/logs/rules`): a rule moves to the "excluded lines" tab the entries whose rendered message
+  contains a text (ignoring case) and, optionally, whose category is exactly a given one. A rule only filters the
+  view, nothing is deleted. The rules are saved as JSON in the rules file of the folder, written atomically.
+- **Purge** (`POST /logs/purge`): deletes the log files older than a number of days, after a confirmation box; it
+  only touches the files of the folder matching the pattern, never the rules file.
+- **Formats**: Serilog's compact JSON (CLEF: `@t`, `@l`, `@mt`, `@m`, `@x`, `@tr` and the properties) and the plain
+  `JsonFormatter` (`Timestamp`, `Level`, `MessageTemplate`, `RenderedMessage`, `Exception`, `Properties`). The
+  message is the rendered one when the file has it, otherwise the template with its properties substituted
+  (strings without quotes, `{Name:format}` for numbers and dates, invariant culture). A line that is not such an
+  event is skipped and counted on the page; a last line still being written is left for the next read.
+- **Safety**: a `file` parameter must be a bare name present in the folder listing (no separator, no `..`, no rooted
+  path), otherwise the request is refused; every output is HTML-encoded; the CSV export neutralises cells starting
+  with `=`, `+`, `-`, `@`; every form carries an antiforgery token that the posts validate themselves
+  (`IAntiforgery.IsRequestValidAsync`), so the host needs no `UseAntiforgery()` for these pages (calling it does no
+  harm); files are opened shared for writing and deleting, so the sink keeps writing and rolling.
+
+The `OmniLogs` section of the host configuration, then `AddOmniLogs(o => ...)`, which has the last word:
+
+| Setting | Default | Purpose |
+|---|---|---|
+| `Directory` | required | The folder the Serilog file sink writes to; relative to the content root. Only its own files are read. |
+| `FilePattern` | `*.json` | The log files of the folder (file-name wildcards, no path). |
+| `RulesFile` | `omni-log-rules.json` | The rules file, inside the folder; never listed as a log, never purged. |
+| `PageSize` | `50` | Entries per page, 1 to 1000. |
+| `MaxBytesRead` | `16777216` (16 MiB) | Log text read per request, 4 KiB to 1 GiB: newest files first, a large file from its end; the page says when older entries were left out. |
+| `FollowRefreshSeconds` | `5` | Reload period of follow mode, 1 to 3600. |
+
+A missing folder setting or an out-of-range value is refused when the application starts.
 
 ## Dependencies
 

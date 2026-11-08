@@ -1,0 +1,272 @@
+@* SPDX-License-Identifier: EUPL-1.2 *@
+@namespace OmniEurope.Diagnostics.Components
+@using OmniEurope.Diagnostics.Logs
+@* The journal MapOmniLogs answers with: a complete HTML document, no stylesheet, no script, semantic HTML without a
+   single class or style. Tabs, filters, pages and follow mode are plain links and a GET form; every value from a log
+   is written as text, HTML-encoded by the renderer. *@
+<!DOCTYPE html>
+<html lang="@LogsFormat.Language">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    @if (Model.Query.Follow)
+    {
+        <meta http-equiv="refresh" content="@Model.FollowSeconds" />
+    }
+    <title>@L["Title"]</title>
+</head>
+<body>
+<main>
+    <h1>@L["Title"]</h1>
+    <p>@L["SourceBefore"] <code>@Model.Source</code> @L["SourceAfter"]</p>
+
+    <nav aria-label="@L["Tabs"]">
+        <p>
+            @if (Model.Query.Excluded)
+            {
+                <a href="@Links.Journal(Filters with { Excluded = false })">@Tab("TabJournal", Model.JournalCount)</a>
+            }
+            else
+            {
+                <strong aria-current="page">@Tab("TabJournal", Model.JournalCount)</strong>
+            }
+            |
+            @if (Model.Query.Excluded)
+            {
+                <strong aria-current="page">@Tab("TabExcluded", Model.ExcludedCount)</strong>
+            }
+            else
+            {
+                <a href="@Links.Journal(Filters with { Excluded = true })">@Tab("TabExcluded", Model.ExcludedCount)</a>
+            }
+            |
+            <a href="@Links.Rules">@Tab("TabRules", Model.RuleCount)</a>
+        </p>
+    </nav>
+
+    @if (Model.Query.Excluded)
+    {
+        <p>@L["ExcludedScope"]</p>
+    }
+
+    <form method="get" action="@Links.BasePath" role="search" aria-label="@L["Filters"]">
+        <fieldset>
+            <legend>@L["Filters"]</legend>
+            @if (Model.Query.Excluded)
+            {
+                <input type="hidden" name="tab" value="excluded" />
+            }
+            <p>
+                <label for="file">@L["File"]</label>
+                <select id="file" name="file">
+                    <option value="">@L["AllFiles"]</option>
+                    @foreach (var file in Model.Files)
+                    {
+                        <option selected="@(file == Model.Query.File)">@file</option>
+                    }
+                </select>
+            </p>
+            <p>
+                <label for="level">@L["Level"]</label>
+                <select id="level" name="level">
+                    <option value="">@L["AllLevels"]</option>
+                    @foreach (var level in Enum.GetValues<LogSeverity>())
+                    {
+                        <option selected="@(level == Model.Query.MinLevel)">@level</option>
+                    }
+                </select>
+            </p>
+            <p>
+                <label for="from">@L["From"]</label>
+                <input id="from" name="from" type="datetime-local" value="@Model.Query.From" />
+                <label for="to">@L["To"]</label>
+                <input id="to" name="to" type="datetime-local" value="@Model.Query.To" />
+            </p>
+            <p>
+                <label for="q">@L["Text"]</label>
+                <input id="q" name="q" type="search" placeholder="@L["TextPlaceholder"]" size="40" value="@Model.Query.Text" />
+            </p>
+            <p>
+                <button type="submit">@L["Filter"]</button>
+                <a href="@Links.Journal(new LogQuery { Excluded = Model.Query.Excluded })">@L["ClearFilters"]</a>
+            </p>
+        </fieldset>
+    </form>
+
+    <p>
+        @Format("ReadAt", Model.ReadAt.UtcDateTime.ToString(L["TimeFormat"], CultureInfo.InvariantCulture))
+        @* Razor drops the whitespace between a text and an element of a code block: the spaces are written out. *@
+        @(" ")
+        @if (Model.Query.Follow)
+        {
+            @Format("Following", Model.FollowSeconds)
+            @(" ")
+            <a href="@Links.Journal(Model.Query with { Follow = false })">@L["StopFollow"]</a>
+        }
+        else
+        {
+            <a href="@Links.Journal(Model.Query with { Follow = true })">@L["Follow"]</a>
+            @(" ")
+            @Format("FollowPeriod", Model.FollowSeconds)
+        }
+    </p>
+    <p>
+        @if (Model.Query.File is { } selected)
+        {
+            <a href="@Links.Download(selected)">@L["Download"]</a>
+            @(" | ")
+        }
+        <a href="@Links.Journal(Filters with { Csv = true })">@L["Export"]</a>
+    </p>
+
+    @if (Model.Files.Count == 0)
+    {
+        <p>@L["NoFilesBefore"] <code>@Model.DirectoryLabel</code>@L["NoFilesAfter"]</p>
+    }
+    @if (Model.Truncated)
+    {
+        <p>@Format("Truncated", LogsFormat.Size(Model.MaxBytesRead, L))</p>
+    }
+    @if (Model.RulesError is not null)
+    {
+        <p>@L["RulesUnreadableBefore"] <code>@Model.RulesLabel</code> @L["RulesUnreadableAfter"]</p>
+    }
+    @foreach (var issue in Model.Issues)
+    {
+        <p>@L["FileIssueBefore"] <code>@issue.File</code> @IssueText(issue)</p>
+    }
+
+    <section aria-labelledby="logs-entries">
+        <h2 id="logs-entries">@L["Entries"]</h2>
+        @if (Model.Rows.Count == 0)
+        {
+            <p>@L["NoEntries"] <a href="@Links.Journal(new LogQuery { Excluded = Model.Query.Excluded })">@L["ClearFilters"]</a></p>
+        }
+        else
+        {
+            <p>@Format("Range", LogsFormat.Count(Model.Offset + 1), LogsFormat.Count(Model.Offset + Model.Rows.Count), LogsFormat.Count(Model.Total))</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th scope="col">@L["Date"]</th>
+                        <th scope="col">@L["LevelColumn"]</th>
+                        <th scope="col">@L["Category"]</th>
+                        <th scope="col">@L["Message"]</th>
+                        <th scope="col">@(Model.Query.Excluded ? L["Rule"] : L["Correlation"])</th>
+                        <th scope="col">@L["Actions"]</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (var index = 0; index < Model.Rows.Count; index++)
+                    {
+                        var row = Model.Rows[index];
+                        var entry = row.Entry;
+                        <tr>
+                            <td><time datetime="@LogsFormat.Iso(entry.Timestamp)">@LogsFormat.Date(entry.Timestamp, L)</time></td>
+                            <td>@if (entry.Level >= LogSeverity.Error) { <strong>@entry.Level</strong> } else { @entry.Level }</td>
+                            <td>@if (entry.Category is not null) { <code>@entry.Category</code> }</td>
+                            <td>@LogsFormat.Preview(entry.Message)</td>
+                            <td>@if ((row.Rule?.Pattern ?? entry.CorrelationId) is { } marker) { <code>@marker</code> }</td>
+                            <td>
+                                <a href="#@Anchor(index)">@L["View"]</a>
+                                @if (row.Rule is null)
+                                {
+                                    @(" | ")
+                                    <a href="@Links.Exclude(entry)">@L["Exclude"]</a>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <nav aria-label="@L["Pagination"]">
+                <p>
+                    @if (Model.Page > 1)
+                    {
+                        <a href="@Links.Journal(Model.Query with { Page = Model.Page - 1 })">@L["Previous"]</a>
+                    }
+                    else
+                    {
+                        @L["Previous"]
+                    }
+                    | @Format("PageOf", LogsFormat.Count(Model.Page), LogsFormat.Count(Model.PageCount)) |
+                    @if (Model.Page < Model.PageCount)
+                    {
+                        <a href="@Links.Journal(Model.Query with { Page = Model.Page + 1 })">@L["Next"]</a>
+                    }
+                    else
+                    {
+                        @L["Next"]
+                    }
+                </p>
+            </nav>
+        }
+    </section>
+
+    @if (Model.Rows.Count > 0)
+    {
+        <section aria-labelledby="logs-detail">
+            <h2 id="logs-detail">@L["Details"]</h2>
+            <p>@L["DetailsScope"]</p>
+            @for (var index = 0; index < Model.Rows.Count; index++)
+            {
+                var row = Model.Rows[index];
+                var entry = row.Entry;
+                <details id="@Anchor(index)">
+                    <summary>@LogsFormat.Date(entry.Timestamp, L), @entry.Level, @LogsFormat.Preview(entry.Message)</summary>
+                    <dl>
+                        <dt>@L["Date"]</dt>
+                        <dd><time datetime="@LogsFormat.Iso(entry.Timestamp)">@LogsFormat.Date(entry.Timestamp, L) @L["Utc"]</time></dd>
+                        <dt>@L["LevelColumn"]</dt>
+                        <dd>@entry.Level</dd>
+                        @if (entry.Category is not null)
+                        {
+                            <dt>@L["Category"]</dt>
+                            <dd><code>@entry.Category</code></dd>
+                        }
+                        @if (entry.CorrelationId is not null)
+                        {
+                            <dt>@L["Correlation"]</dt>
+                            <dd><code>@entry.CorrelationId</code> (<a href="@Links.Journal(new LogQuery { Text = entry.CorrelationId })">@L["SameRequest"]</a>)</dd>
+                        }
+                        @if (entry.Request is not null)
+                        {
+                            <dt>@L["Request"]</dt>
+                            <dd><code>@entry.Request</code></dd>
+                        }
+                        <dt>@L["File"]</dt>
+                        <dd><code>@entry.File</code>@(entry.Line is { } line ? Format("LineNumber", LogsFormat.Count(line)) : "")</dd>
+                        @if (row.Rule is { } rule)
+                        {
+                            <dt>@L["Rule"]</dt>
+                            <dd><code>@rule.Pattern</code></dd>
+                        }
+                    </dl>
+                    <h3>@L["Message"]</h3>
+                    <pre>@entry.Message</pre>
+                    @if (entry.Exception is not null)
+                    {
+                        <h3>@L["Exception"]</h3>
+                        <pre>@entry.Exception</pre>
+                    }
+                    @if (entry.Properties.Count > 0)
+                    {
+                        <h3>@L["Properties"]</h3>
+                        <table>
+                            <thead><tr><th scope="col">@L["Name"]</th><th scope="col">@L["Value"]</th></tr></thead>
+                            <tbody>
+                                @foreach (var property in entry.Properties)
+                                {
+                                    <tr><td><code>@property.Key</code></td><td>@property.Value</td></tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                </details>
+            }
+        </section>
+    }
+</main>
+</body>
+</html>
