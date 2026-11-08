@@ -210,7 +210,8 @@ public sealed class LogRulesAndFiltersTests : IDisposable
     [Fact]
     public void ARelativeDirectory_IsResolvedAgainstTheContentRoot()
     {
-        var directory = new LogDirectory(Options.Create(new LogsOptions { Directory = "logs\\" }), new Environment(_folder.Path));
+        // The platform's own separator: on Linux a backslash is an ordinary file-name character, not a separator.
+        var directory = new LogDirectory(Options.Create(new LogsOptions { Directory = "logs" + Path.DirectorySeparatorChar }), new Environment(_folder.Path));
 
         Assert.Equal(Path.Combine(_folder.Path, "logs") + Path.DirectorySeparatorChar, directory.FullPath);
         Assert.Equal(("logs/", "logs/*.json", "logs/omni-log-rules.json"), (directory.DirectoryLabel, directory.Source, directory.RulesLabel));
@@ -235,9 +236,21 @@ public sealed class LogRulesAndFiltersTests : IDisposable
         using (new FileStream(locked, FileMode.Open, FileAccess.Read, FileShare.Read))
             result = directory.Purge(30, now);
 
-        Assert.Equal(new LogPurgeResult(1, 2), result);
-        Assert.Equal(["locked.json", "old.txt", "omni-log-rules.json", "readonly.json", "recent.json"],
-            System.IO.Directory.GetFiles(_folder.Path).Select(Path.GetFileName).Order());
+        // Windows refuses to delete a file held open without delete sharing, or a read-only one: both are counted as
+        // failed and stay. POSIX deletes both (an open file lives on for its reader, read-only guards the content,
+        // not the folder entry). Either way only old files matching the pattern go, never the rules file.
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.Equal(new LogPurgeResult(1, 2), result);
+            Assert.Equal(["locked.json", "old.txt", "omni-log-rules.json", "readonly.json", "recent.json"],
+                System.IO.Directory.GetFiles(_folder.Path).Select(Path.GetFileName).Order());
+        }
+        else
+        {
+            Assert.Equal(new LogPurgeResult(3, 0), result);
+            Assert.Equal(["old.txt", "omni-log-rules.json", "recent.json"],
+                System.IO.Directory.GetFiles(_folder.Path).Select(Path.GetFileName).Order());
+        }
     }
 
     [Fact]

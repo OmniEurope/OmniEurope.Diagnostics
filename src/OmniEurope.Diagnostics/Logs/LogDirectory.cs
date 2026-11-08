@@ -22,7 +22,8 @@ internal enum LogFileLookup
 
 /// <summary>What a purge deleted, and what it could not.</summary>
 /// <param name="Deleted">Files deleted.</param>
-/// <param name="Failed">Files that could not be deleted (in use, read-only).</param>
+/// <param name="Failed">Files that could not be deleted (on Windows: held open without delete sharing, or read-only;
+/// POSIX systems delete both).</param>
 internal sealed record LogPurgeResult(int Deleted, int Failed);
 
 /// <summary>
