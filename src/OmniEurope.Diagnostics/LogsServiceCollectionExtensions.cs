@@ -16,6 +16,11 @@ public static class LogsServiceCollectionExtensions
     /// Registers what the logs pages read, filter and render with: <see cref="LogsOptions"/> (bound to
     /// <see cref="ConfigurationSection"/> and checked when the host starts), the log folder, the exclusion rules,
     /// Razor components, localization and antiforgery (every form of the pages carries a token the posts check).
+    /// It also registers the public services a host builds its own screen with: <see cref="ILogJournal"/> (scoped),
+    /// <see cref="ILogRuleStore"/> (the JSON rules file, a singleton) and <see cref="ILogChanges"/> (a singleton).
+    /// Each is registered only when the host has not registered its own; a host's registration made after this call
+    /// wins too (the last registration is the one resolved), so a host can keep its rules in a database whatever the
+    /// order. A host-provided <see cref="ILogRuleStore"/> may be scoped.
     /// Safe to call more than once: the services are registered once and every <paramref name="configure"/> is
     /// applied. Pair it with <see cref="Microsoft.AspNetCore.Builder.LogsEndpointRouteBuilderExtensions.MapOmniLogs"/>.
     /// </summary>
@@ -42,7 +47,16 @@ public static class LogsServiceCollectionExtensions
         services.AddAntiforgery();
         services.AddSingleton<LogsPageServices>();
         services.AddSingleton<LogDirectory>();
-        services.AddSingleton<LogRuleStore>();
+        services.TryAddSingleton<ILogRuleStore, LogRuleStore>();
+        services.TryAddScoped<ILogJournal>(provider => new LogJournal(
+            provider.GetRequiredService<LogDirectory>(),
+            provider.GetRequiredService<IOptions<LogsOptions>>(),
+            provider.GetRequiredService<ILogRuleStore>(),
+            provider.GetService<TimeProvider>() ?? TimeProvider.System));
+        services.TryAddSingleton<ILogChanges>(provider => new LogChangeWatcher(
+            provider.GetRequiredService<LogDirectory>(),
+            provider.GetRequiredService<IOptions<LogsOptions>>(),
+            provider.GetService<TimeProvider>() ?? TimeProvider.System));
         services.AddScoped<LogsPageState>();
         return services;
     }

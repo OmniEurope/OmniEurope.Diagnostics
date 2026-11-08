@@ -2,13 +2,24 @@
 namespace OmniEurope.Diagnostics.Logs;
 
 /// <summary>Serilog's levels, from the most verbose to the most severe; a filter keeps a level and above.</summary>
-internal enum LogSeverity
+public enum LogSeverity
 {
+    /// <summary>The most detailed tracing (Microsoft's <c>Trace</c>).</summary>
     Verbose,
+
+    /// <summary>Diagnostic detail.</summary>
     Debug,
+
+    /// <summary>The normal course of the application; an event without a level reads as this one.</summary>
     Information,
+
+    /// <summary>Something unexpected that did not stop the work.</summary>
     Warning,
+
+    /// <summary>A failure of the current operation.</summary>
     Error,
+
+    /// <summary>A failure of the application (Microsoft's <c>Critical</c>).</summary>
     Fatal,
 }
 
@@ -22,7 +33,7 @@ internal enum LogSeverity
 /// <param name="CorrelationId">The first of <c>CorrelationId</c>, <c>RequestId</c>, <c>TraceId</c> and the trace id.</param>
 /// <param name="Request">The request method and path, when present.</param>
 /// <param name="Properties">The other properties, in file order, their values as text.</param>
-internal sealed record LogEntry(
+public sealed record LogEntry(
     DateTimeOffset Timestamp,
     LogSeverity Level,
     string Message,
@@ -44,4 +55,6 @@ internal sealed record LogEntry(
 }
 
 /// <summary>An entry as a tab lists it: the rule that excludes it on the excluded tab, none on the journal.</summary>
-internal sealed record LogRow(LogEntry Entry, LogRule? Rule);
+/// <param name="Entry">The entry.</param>
+/// <param name="Rule">The first enabled rule that matches it, or null when none does (a journal entry).</param>
+public sealed record LogRow(LogEntry Entry, LogRule? Rule);

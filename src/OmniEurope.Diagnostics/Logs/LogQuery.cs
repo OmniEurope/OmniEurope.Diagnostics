@@ -81,16 +81,19 @@ internal sealed record LogQuery
     public bool Accepts(LogEntry entry)
     {
         ArgumentNullException.ThrowIfNull(entry);
-        return (MinLevel is not { } level || entry.Level >= level)
-            && (FromDate is not { } from || entry.Timestamp >= from)
-            && (ToDate is not { } to || entry.Timestamp <= to)
-            && (Text is null || MatchesText(entry, Text));
+        return ToSearch().Accepts(entry);
     }
 
-    private static bool MatchesText(LogEntry entry, string text) =>
-        Contains(entry.Message, text) || Contains(entry.Category, text) || Contains(entry.Exception, text) || Contains(entry.CorrelationId, text);
-
-    private static bool Contains(string? field, string text) => field?.Contains(text, StringComparison.OrdinalIgnoreCase) == true;
+    /// <summary>The search of <see cref="ILogJournal"/> this query asks for: its file, filters and tab.</summary>
+    public LogSearch ToSearch() => new()
+    {
+        File = File,
+        MinLevel = MinLevel,
+        From = FromDate,
+        To = ToDate,
+        Text = Text,
+        Excluded = Excluded,
+    };
 
     /// <summary>The query string of this query (leading <c>?</c>, or empty), filters first.</summary>
     public string ToQueryString()

@@ -12,25 +12,32 @@ namespace OmniEurope.Diagnostics.Logs;
 /// <param name="Pattern">The text the message contains.</param>
 /// <param name="Category">The only category it applies to, or null for every category.</param>
 /// <param name="Enabled">Whether it excludes anything.</param>
-internal sealed record LogRule(int Id, string Pattern, string? Category, bool Enabled)
+public sealed record LogRule(int Id, string Pattern, string? Category, bool Enabled)
 {
     /// <summary>The longest pattern or category a rule accepts.</summary>
     public const int MaxLength = 1000;
 
     /// <summary>Whether the rule's text and category describe <paramref name="entry"/>, enabled or not.</summary>
-    public bool Matches(LogEntry entry) =>
-        entry.Message.Contains(Pattern, StringComparison.OrdinalIgnoreCase)
-        && (Category is null || string.Equals(entry.Category, Category, StringComparison.OrdinalIgnoreCase));
+    /// <param name="entry">The entry tested.</param>
+    public bool Matches(LogEntry entry)
+    {
+        ArgumentNullException.ThrowIfNull(entry);
+        return entry.Message.Contains(Pattern, StringComparison.OrdinalIgnoreCase)
+            && (Category is null || string.Equals(entry.Category, Category, StringComparison.OrdinalIgnoreCase));
+    }
 }
 
-/// <summary>The rules as read: the list, or why the file could not be read (then none applies).</summary>
-/// <param name="Rules">The rules, in file order.</param>
-/// <param name="Error">Null when the file was read or is absent; the reason otherwise.</param>
-/// <param name="NextId">The id the next rule gets: ids are never reused, so a stale form never reaches a newer rule.</param>
-internal sealed record LogRuleSet(IReadOnlyList<LogRule> Rules, string? Error, int NextId = 1);
+/// <summary>The rules as read: the list, or why they could not be read (then none applies).</summary>
+/// <param name="Rules">The rules, in stored order.</param>
+/// <param name="Error">Null when the rules were read (an absent file has none); the reason otherwise.</param>
+public sealed record LogRuleSet(IReadOnlyList<LogRule> Rules, string? Error)
+{
+    /// <summary>The id the next rule of the file gets: ids are never reused, so a stale form never reaches a newer rule.</summary>
+    internal int NextId { get; init; } = 1;
+}
 
 /// <summary>What a change to the rules came to.</summary>
-internal enum LogRuleUpdate
+public enum LogRuleUpdate
 {
     /// <summary>Saved.</summary>
     Saved,
@@ -38,7 +45,7 @@ internal enum LogRuleUpdate
     /// <summary>No rule has the id the change named; nothing was written.</summary>
     NotFound,
 
-    /// <summary>The file exists but cannot be read: it is never overwritten, nothing was written.</summary>
+    /// <summary>The stored rules exist but cannot be read: they are never overwritten, nothing was written.</summary>
     Unreadable,
 
     /// <summary>The file could not be written (read-only folder, full disk, locked file): the old one is kept.</summary>
@@ -46,11 +53,13 @@ internal enum LogRuleUpdate
 }
 
 /// <summary>
-/// The rules file of <see cref="LogsOptions.RulesFile"/>, as JSON. Every change reads, changes and writes the file
-/// under one lock, so concurrent posts never lose a rule; it is written to a temporary file of the same folder and
-/// moved over the old one, so a reader never sees half a file. An unreadable file is reported, never replaced.
+/// The default <see cref="ILogRuleStore"/>: the rules file of <see cref="LogsOptions.RulesFile"/>, as JSON. Every
+/// change reads, changes and writes the file under one lock, so concurrent posts never lose a rule; it is written to
+/// a temporary file of the same folder and moved over the old one, so a reader never sees half a file. An unreadable
+/// file is reported, never replaced. The file is small and read synchronously: the asynchronous methods only check
+/// their token before the work.
 /// </summary>
-internal sealed class LogRuleStore(LogDirectory directory)
+internal sealed class LogRuleStore(LogDirectory directory) : ILogRuleStore
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { WriteIndented = true };
     private readonly Lock _gate = new();
@@ -66,13 +75,30 @@ internal sealed class LogRuleStore(LogDirectory directory)
             var document = JsonSerializer.Deserialize<RulesDocument>(stream, Json);
             var rules = (document?.Rules ?? []).Where(rule => !string.IsNullOrWhiteSpace(rule?.Pattern)).ToList();
             var next = Math.Max(document?.NextId ?? 1, AfterLast(rules));
-            return new LogRuleSet(rules, null, next);
+            return new LogRuleSet(rules, null) { NextId = next };
         }
         catch (Exception exception) when (exception is JsonException or IOException or UnauthorizedAccessException)
         {
             return new LogRuleSet([], exception.Message);
         }
     }
+
+    /// <inheritdoc />
+    public Task<LogRuleUpdate> AddAsync(string pattern, string? category, CancellationToken cancellationToken = default) =>
+        Run(() => Add(pattern, category), cancellationToken);
+
+    /// <inheritdoc />
+    public Task<LogRuleUpdate> SetEnabledAsync(int id, bool enabled, CancellationToken cancellationToken = default) =>
+        Run(() => SetEnabled(id, enabled), cancellationToken);
+
+    /// <inheritdoc />
+    public Task<LogRuleUpdate> DeleteAsync(int id, CancellationToken cancellationToken = default) =>
+        Run(() => Delete(id), cancellationToken);
+
+    /// <inheritdoc />
+    public Task<LogRuleSet> LoadAsync(CancellationToken cancellationToken = default) => Run(Load, cancellationToken);
+
+    private static Task<T> Run<T>(Func<T> work, CancellationToken cancellationToken) => SyncTask.Run(work, cancellationToken);
 
     /// <summary>Adds a rule, enabled, numbered after the highest id.</summary>
     public LogRuleUpdate Add(string pattern, string? category) =>

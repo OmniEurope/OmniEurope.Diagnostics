@@ -8,6 +8,8 @@ namespace OmniEurope.Diagnostics.Tests;
 /// <summary>Serilog's JSON lines as the page reads them, and real files read within the byte cap.</summary>
 public sealed class LogReadingTests : IDisposable
 {
+    private static CancellationToken Ct => TestContext.Current.CancellationToken;
+
     private readonly TempLogFolder _folder = new();
 
     public void Dispose() => _folder.Dispose();
@@ -191,7 +193,7 @@ public sealed class LogReadingTests : IDisposable
         var path = _folder.Write("app.json", [Clef.Line(Clef.Noon, "one"), "garbage", "", Clef.Line(Clef.Noon, "two"), "{\"broken\":"]);
         File.AppendAllText(path, "{\"@t\":\"2026-11-08T12:00:00Z\",\"@mt\":\"torn"); // being written: no end of line yet
 
-        var read = LogFileReader.Read([new FileInfo(path)], LogsOptions.DefaultMaxBytesRead);
+        var read = LogFileReader.Read([new FileInfo(path)], LogsOptions.DefaultMaxBytesRead, Ct);
 
         Assert.Equal(["one", "two"], read.Entries.Select(e => e.Message));
         Assert.Equal([1, 4], read.Entries.Select(e => e.Line!.Value));
@@ -207,7 +209,7 @@ public sealed class LogReadingTests : IDisposable
         var path = _folder.File("bom.json");
         File.WriteAllText(path, Clef.Line(Clef.Noon, "first") + "\r\n" + Clef.Line(Clef.Noon, "last"), new UTF8Encoding(true));
 
-        var read = LogFileReader.Read([new FileInfo(path)], LogsOptions.DefaultMaxBytesRead);
+        var read = LogFileReader.Read([new FileInfo(path)], LogsOptions.DefaultMaxBytesRead, Ct);
 
         Assert.Equal(["first", "last"], read.Entries.Select(e => e.Message));
         Assert.Empty(read.Issues);
@@ -218,7 +220,7 @@ public sealed class LogReadingTests : IDisposable
     {
         var path = _folder.Write("bad.json", Enumerable.Repeat("bad", 12));
 
-        var issue = Assert.Single(LogFileReader.Read([new FileInfo(path)], LogsOptions.DefaultMaxBytesRead).Issues);
+        var issue = Assert.Single(LogFileReader.Read([new FileInfo(path)], LogsOptions.DefaultMaxBytesRead, Ct).Issues);
 
         Assert.Equal((12, 10), (issue.UnreadableCount, issue.Lines.Count));
     }
@@ -231,7 +233,7 @@ public sealed class LogReadingTests : IDisposable
         var newest = _folder.Write("newest.json", lines);
         var budget = Encoding.UTF8.GetByteCount(string.Concat(lines.TakeLast(3).Select(l => l + "\n"))) + 5;
 
-        var read = LogFileReader.Read([new FileInfo(newest), new FileInfo(older)], budget);
+        var read = LogFileReader.Read([new FileInfo(newest), new FileInfo(older)], budget, Ct);
 
         Assert.True(read.Truncated);
         Assert.Equal(["line 98", "line 99", "line 100"], read.Entries.Select(e => e.Message));
@@ -245,7 +247,7 @@ public sealed class LogReadingTests : IDisposable
         var path = _folder.File("one.json");
         File.WriteAllText(path, Clef.Line(Clef.Noon, new string('x', 200))); // no end of line at all
 
-        var read = LogFileReader.Read([new FileInfo(path)], 50);
+        var read = LogFileReader.Read([new FileInfo(path)], 50, Ct);
 
         Assert.True(read.Truncated);
         Assert.Empty(read.Entries);
@@ -258,7 +260,7 @@ public sealed class LogReadingTests : IDisposable
         var first = _folder.Write("a.json", [Clef.Line(Clef.Noon, "a")]);
         var second = _folder.Write("b.json", [Clef.Line(Clef.Noon, "b")]);
 
-        var read = LogFileReader.Read([new FileInfo(first), new FileInfo(second)], new FileInfo(first).Length);
+        var read = LogFileReader.Read([new FileInfo(first), new FileInfo(second)], new FileInfo(first).Length, Ct);
 
         Assert.Equal(["a"], read.Entries.Select(e => e.Message));
         Assert.True(read.Truncated);
@@ -270,7 +272,7 @@ public sealed class LogReadingTests : IDisposable
         var path = _folder.Write("live.json", [Clef.Line(Clef.Noon, "before")]);
         using var sink = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.Read);
 
-        var read = LogFileReader.Read([new FileInfo(path)], LogsOptions.DefaultMaxBytesRead);
+        var read = LogFileReader.Read([new FileInfo(path)], LogsOptions.DefaultMaxBytesRead, Ct);
         sink.Write(Encoding.UTF8.GetBytes(Clef.Line(Clef.Noon, "after") + "\n"));
 
         Assert.Equal(["before"], read.Entries.Select(e => e.Message));
@@ -284,7 +286,7 @@ public sealed class LogReadingTests : IDisposable
         var folderAsFile = Directory.CreateDirectory(_folder.File("folder.json"));
         using var exclusive = new FileStream(locked, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
 
-        var read = LogFileReader.Read([new FileInfo(locked), new FileInfo(folderAsFile.FullName), new FileInfo(fine)], LogsOptions.DefaultMaxBytesRead);
+        var read = LogFileReader.Read([new FileInfo(locked), new FileInfo(folderAsFile.FullName), new FileInfo(fine)], LogsOptions.DefaultMaxBytesRead, Ct);
 
         Assert.Equal(["shown"], read.Entries.Select(e => e.Message));
         Assert.Equal(["locked.json", "folder.json"], read.Issues.Select(issue => issue.File));

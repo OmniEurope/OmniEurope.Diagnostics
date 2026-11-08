@@ -254,7 +254,7 @@ public sealed class LogRulesAndFiltersTests : IDisposable
         Assert.Equal(["locked.json", "old.json", "readonly.json"], directory.OlderThan(30, now).Select(f => f.Name).Order());
         LogPurgeResult result;
         using (new FileStream(locked, FileMode.Open, FileAccess.Read, FileShare.Read))
-            result = directory.Purge(30, now);
+            result = directory.Purge(30, now, TestContext.Current.CancellationToken);
 
         // Windows refuses to delete a file held open without delete sharing, or a read-only one: both are counted as
         // failed and stay. POSIX deletes both (an open file lives on for its reader, read-only guards the content,

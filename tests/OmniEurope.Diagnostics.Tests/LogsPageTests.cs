@@ -75,8 +75,7 @@ public sealed class LogsPageTests : IDisposable
     public void EachUnreadableFile_IsNamed_WithItsCountAndLines()
     {
         var failed = new LogFileIssue("gone.json") { Failed = true };
-        var many = new LogFileIssue("app-20261105.json") { UnreadableCount = 3 };
-        many.Lines.AddRange([1022, 1023, 4870]);
+        var many = new LogFileIssue("app-20261105.json") { UnreadableCount = 3, Lines = [1022, 1023, 4870] };
         var unnumbered = new LogFileIssue("cut.json") { UnreadableCount = 2 };
         _state.Journal = Journal([], [failed, many, unnumbered]);
 

@@ -8,12 +8,23 @@ namespace OmniEurope.Diagnostics.Logs;
 /// Reads one line of a Serilog JSON file: the compact format (CLEF, <c>CompactJsonFormatter</c> and
 /// <c>RenderedCompactJsonFormatter</c>: <c>@t</c>, <c>@l</c>, <c>@mt</c>, <c>@m</c>, <c>@x</c>, <c>@tr</c> and the
 /// properties at the top level) and the plain <c>JsonFormatter</c> (<c>Timestamp</c>, <c>Level</c>,
-/// <c>MessageTemplate</c>, <c>RenderedMessage</c>, <c>Exception</c> and a <c>Properties</c> object). A line that is
-/// not such an object, or whose timestamp is missing or unreadable, is refused (null), never thrown.
+/// <c>MessageTemplate</c>, <c>RenderedMessage</c>, <c>Exception</c> and a <c>Properties</c> object), and a flat format
+/// a simple writer produces (<c>Timestamp</c>, <c>Level</c>, <c>Message</c> rendered, <c>Exception</c> and the other
+/// properties, <c>SourceContext</c> and <c>CorrelationId</c> say, at the top level; <c>RenderedMessage</c>,
+/// <c>MessageTemplate</c> and a <c>Properties</c> object win when present). A line that is not such an object, or
+/// whose timestamp is missing or unreadable, is refused (null), never thrown.
 /// </summary>
 internal static class LogLineParser
 {
     private static readonly string[] CorrelationNames = ["CorrelationId", "RequestId", "TraceId"];
+
+    /// <summary>The fields of the plain and flat formats that are the event itself, never one of its properties.</summary>
+    private static readonly HashSet<string> PlainFields =
+        new(["Timestamp", "Level", "MessageTemplate", "RenderedMessage", "Message", "Exception", "Properties", "Renderings"],StringComparer.Ordinal);
+
+    /// <summary>Microsoft's level names that differ from Serilog's.</summary>
+    private static readonly Dictionary<string, LogSeverity> MicrosoftLevels =
+        new(StringComparer.OrdinalIgnoreCase) { ["Trace"] = LogSeverity.Verbose, ["Critical"] = LogSeverity.Fatal };
 
     /// <summary>The event of <paramref name="line"/> (UTF-8 JSON), or null when it is not a readable event.</summary>
     public static LogEntry? Parse(ReadOnlyMemory<byte> line)
@@ -63,9 +74,15 @@ internal static class LogLineParser
             foreach (var property in bag.EnumerateObject())
                 Add(properties, order, property.Name, property.Value);
         }
+        else
+        {
+            // The flat format: no Properties object, the properties (SourceContext, CorrelationId...) at the top level.
+            foreach (var property in root.EnumerateObject().Where(property => !PlainFields.Contains(property.Name)))
+                Add(properties, order, property.Name, property.Value);
+        }
         return Build(new RawEvent(
-            Text(root, "Timestamp"), Text(root, "Level"), Text(root, "MessageTemplate"), Text(root, "RenderedMessage"),
-            Text(root, "Exception"), null),
+            Text(root, "Timestamp"), Text(root, "Level"), Text(root, "MessageTemplate"),
+            Text(root, "RenderedMessage") ?? Text(root, "Message"), Text(root, "Exception"), null),
             properties, order);
     }
 
@@ -102,9 +119,14 @@ internal static class LogLineParser
             rest);
     }
 
-    /// <summary>A Serilog level name; none, or one Serilog does not write, reads as Information.</summary>
-    internal static LogSeverity Level(string? name) =>
-        Enum.TryParse<LogSeverity>(name, ignoreCase: true, out var level) && Enum.IsDefined(level) ? level : LogSeverity.Information;
+    /// <summary>A Serilog level name, or Microsoft's <c>Trace</c> and <c>Critical</c>; none, or an unknown one, reads
+    /// as Information.</summary>
+    internal static LogSeverity Level(string? name)
+    {
+        if (name is not null && MicrosoftLevels.TryGetValue(name, out var microsoft))
+            return microsoft;
+        return Enum.TryParse<LogSeverity>(name, ignoreCase: true, out var level) && Enum.IsDefined(level) ? level : LogSeverity.Information;
+    }
 
     private static string? Value(Dictionary<string, JsonElement> properties, string name) =>
         properties.TryGetValue(name, out var value) ? MessageTemplateRenderer.Format(value, null) : null;

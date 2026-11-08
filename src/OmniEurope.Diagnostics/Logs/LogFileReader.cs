@@ -2,7 +2,8 @@
 namespace OmniEurope.Diagnostics.Logs;
 
 /// <summary>What one file could not give: lines that are not events, or the whole file when it cannot be opened.</summary>
-internal sealed class LogFileIssue(string file)
+/// <param name="file">The file's name.</param>
+public sealed class LogFileIssue(string file)
 {
     /// <summary>How many line numbers are kept for the notice.</summary>
     public const int LinesShown = 10;
@@ -11,13 +12,14 @@ internal sealed class LogFileIssue(string file)
     public string File { get; } = file;
 
     /// <summary>True when the file could not be opened or read at all.</summary>
-    public bool Failed { get; set; }
+    public bool Failed { get; init; }
 
     /// <summary>The lines that are not readable events.</summary>
-    public int UnreadableCount { get; set; }
+    public int UnreadableCount { get; init; }
 
-    /// <summary>The first <see cref="LinesShown"/> of their numbers, when known.</summary>
-    public List<int> Lines { get; } = [];
+    /// <summary>The first <see cref="LinesShown"/> of their numbers, when known (unknown when the file was read from
+    /// its end).</summary>
+    public IReadOnlyList<int> Lines { get; init; } = [];
 }
 
 /// <summary>The events one request read, newest file first, and what it had to leave out.</summary>
@@ -42,18 +44,21 @@ internal sealed class LogReadResult
 internal static class LogFileReader
 {
     /// <summary>Reads <paramref name="files"/> (newest first) within <paramref name="maxBytes"/>.</summary>
-    public static LogReadResult Read(IReadOnlyList<FileInfo> files, long maxBytes)
+    /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was cancelled: checked
+    /// before each file and each line.</exception>
+    public static LogReadResult Read(IReadOnlyList<FileInfo> files, long maxBytes, CancellationToken cancellationToken = default)
     {
         var result = new LogReadResult();
         var remaining = maxBytes;
         foreach (var file in files)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (remaining <= 0)
             {
                 result.Truncated = true;
                 break;
             }
-            remaining -= ReadFile(file, remaining, result);
+            remaining -= ReadFile(file, remaining, result, cancellationToken);
         }
         return result;
     }
@@ -81,7 +86,7 @@ internal static class LogFileReader
         }
     }
 
-    private static long ReadFile(FileInfo file, long budget, LogReadResult result)
+    private static long ReadFile(FileInfo file, long budget, LogReadResult result, CancellationToken cancellationToken)
     {
         try
         {
@@ -96,7 +101,7 @@ internal static class LogFileReader
             }
             var buffer = new byte[take];
             var read = stream.ReadAtLeast(buffer, take, throwOnEndOfStream: false);
-            ParseLines(buffer.AsMemory(0, read), fromEnd, file.Name, result);
+            ParseLines(buffer.AsMemory(0, read), fromEnd, file.Name, result, cancellationToken);
             return read;
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
@@ -107,9 +112,9 @@ internal static class LogFileReader
         }
     }
 
-    private static void ParseLines(ReadOnlyMemory<byte> text, bool fromEnd, string file, LogReadResult result)
+    private static void ParseLines(ReadOnlyMemory<byte> text, bool fromEnd, string file, LogReadResult result, CancellationToken cancellationToken)
     {
-        var issue = new LogFileIssue(file);
+        var issue = new IssueBuilder(file);
         var lineNumber = 0;
         var start = SkipBom(text.Span);
         if (fromEnd)
@@ -120,6 +125,7 @@ internal static class LogFileReader
         }
         while (start < text.Length)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var end = text.Span[start..].IndexOf((byte)'\n');
             var complete = end >= 0;
             var line = text[start..(complete ? start + end : text.Length)];
@@ -128,13 +134,23 @@ internal static class LogFileReader
             ParseLine(line, complete, fromEnd ? null : lineNumber, issue, result);
         }
         if (issue.UnreadableCount > 0)
-            result.Issues.Add(issue);
+            result.Issues.Add(new LogFileIssue(file) { UnreadableCount = issue.UnreadableCount, Lines = issue.Lines });
     }
 
     private static int SkipBom(ReadOnlySpan<byte> text) =>
         text.StartsWith((ReadOnlySpan<byte>)[0xEF, 0xBB, 0xBF]) ? 3 : 0;
 
-    private static void ParseLine(ReadOnlyMemory<byte> line, bool complete, int? lineNumber, LogFileIssue issue, LogReadResult result)
+    /// <summary>The unreadable lines of one file, while it is read.</summary>
+    private sealed class IssueBuilder(string file)
+    {
+        public string File { get; } = file;
+
+        public int UnreadableCount { get; set; }
+
+        public List<int> Lines { get; } = [];
+    }
+
+    private static void ParseLine(ReadOnlyMemory<byte> line, bool complete, int? lineNumber, IssueBuilder issue, LogReadResult result)
     {
         var trimmed = line.TrimEnd((byte)'\r');
         if (trimmed.Span.Trim((byte)' ').IsEmpty)

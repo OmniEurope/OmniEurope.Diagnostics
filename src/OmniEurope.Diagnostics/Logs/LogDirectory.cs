@@ -24,7 +24,7 @@ internal enum LogFileLookup
 /// <param name="Deleted">Files deleted.</param>
 /// <param name="Failed">Files that could not be deleted (on Windows: held open without delete sharing, or read-only;
 /// POSIX systems delete both).</param>
-internal sealed record LogPurgeResult(int Deleted, int Failed);
+public sealed record LogPurgeResult(int Deleted, int Failed);
 
 /// <summary>
 /// The log folder of <see cref="LogsOptions"/>: the only place the page lists, reads, downloads and deletes files.
@@ -89,31 +89,43 @@ internal sealed class LogDirectory
         && !Path.IsPathRooted(name);
 
     /// <summary>Looks <paramref name="name"/> up in <paramref name="files"/>: the listed file, or why there is none.</summary>
-    public static (LogFileLookup Lookup, FileInfo? File) Find(string? name, IReadOnlyList<FileInfo> files)
+    public static (LogFileLookup Lookup, FileInfo? File) Find(string? name, IReadOnlyList<FileInfo> files) =>
+        Find(name, files, file => file.Name);
+
+    /// <summary>Looks <paramref name="name"/> up in <paramref name="files"/>: the listed file, or why there is none.</summary>
+    public static (LogFileLookup Lookup, LogFileInfo? File) Find(string? name, IReadOnlyList<LogFileInfo> files) =>
+        Find(name, files, file => file.Name);
+
+    private static (LogFileLookup Lookup, T? File) Find<T>(string? name, IReadOnlyList<T> files, Func<T, string> nameOf)
+        where T : class
     {
         if (string.IsNullOrEmpty(name))
             return (LogFileLookup.None, null);
         if (!IsBareName(name))
             return (LogFileLookup.Invalid, null);
         // The exact name first: a case-sensitive file system may hold both app.json and App.json.
-        var file = files.FirstOrDefault(listed => string.Equals(listed.Name, name, StringComparison.Ordinal))
-            ?? files.FirstOrDefault(listed => string.Equals(listed.Name, name, StringComparison.OrdinalIgnoreCase));
+        var file = files.FirstOrDefault(listed => string.Equals(nameOf(listed), name, StringComparison.Ordinal))
+            ?? files.FirstOrDefault(listed => string.Equals(nameOf(listed), name, StringComparison.OrdinalIgnoreCase));
         return file is null ? (LogFileLookup.Missing, null) : (LogFileLookup.Found, file);
     }
 
+    /// <summary>Whether a file last written at <paramref name="lastWriteUtc"/> is more than <paramref name="days"/>
+    /// days older than <paramref name="now"/>: what a purge deletes. Any number of days is accepted: more days than
+    /// the calendar holds keeps every file.</summary>
+    public static bool IsOlderThan(DateTime lastWriteUtc, int days, DateTimeOffset now) =>
+        (now.UtcDateTime - DateTime.SpecifyKind(lastWriteUtc, DateTimeKind.Utc)).TotalDays > days;
+
     /// <summary>The log files last written more than <paramref name="days"/> days before <paramref name="now"/>.</summary>
-    public IReadOnlyList<FileInfo> OlderThan(int days, DateTimeOffset now)
-    {
-        var cutoff = now.UtcDateTime.AddDays(-days);
-        return List().Where(file => file.LastWriteTimeUtc < cutoff).ToList();
-    }
+    public IReadOnlyList<FileInfo> OlderThan(int days, DateTimeOffset now) =>
+        List().Where(file => IsOlderThan(file.LastWriteTimeUtc, days, now)).ToList();
 
     /// <summary>Deletes the log files of <see cref="OlderThan"/>; the rules file and other files are never touched.</summary>
-    public LogPurgeResult Purge(int days, DateTimeOffset now)
+    public LogPurgeResult Purge(int days, DateTimeOffset now, CancellationToken cancellationToken = default)
     {
         int deleted = 0, failed = 0;
         foreach (var file in OlderThan(days, now))
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (TryDelete(file))
                 deleted++;
             else

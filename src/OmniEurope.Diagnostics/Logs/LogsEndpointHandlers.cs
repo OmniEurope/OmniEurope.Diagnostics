@@ -27,18 +27,17 @@ internal sealed class LogsEndpointHandlers(string pattern)
     private readonly string _pattern = pattern.Trim().Trim('/');
 
     /// <summary>GET <c>{pattern}</c>: the journal or excluded tab, or the CSV export of its selection.</summary>
-    public IResult Journal(HttpContext context)
+    public async Task<IResult> Journal(HttpContext context)
     {
         var services = Services.Of(context);
+        var cancellationToken = context.RequestAborted;
         var query = LogQuery.Parse(context.Request.Query);
-        var files = services.Directory.List();
-        var (lookup, file) = LogDirectory.Find(query.File, files);
+        var files = await services.Journal.ListFilesAsync(cancellationToken);
+        var (lookup, _) = LogDirectory.Find(query.File, files);
         if (Refusal(lookup) is { } refusal)
             return refusal;
-        var read = LogFileReader.Read(file is null ? files : [file], services.Options.MaxBytesRead);
-        var rules = services.Rules.Load();
-        var (journal, excluded) = LogSelection.Split(read.Entries, rules.Rules, query);
-        var rows = query.Excluded ? excluded : journal;
+        var found = await services.Journal.SearchAsync(query.ToSearch(), cancellationToken);
+        var rows = found.Entries;
         if (query.Csv)
             return TypedResults.File(LogsCsv.Write(rows), "text/csv; charset=utf-8", "logs.csv");
 
@@ -54,41 +53,35 @@ internal sealed class LogsEndpointHandlers(string pattern)
             DirectoryLabel = services.Directory.DirectoryLabel,
             RulesLabel = services.Directory.RulesLabel,
             ReadAt = services.Time.GetUtcNow(),
-            JournalCount = journal.Count,
-            ExcludedCount = excluded.Count,
-            RuleCount = rules.Rules.Count,
+            JournalCount = found.JournalCount,
+            ExcludedCount = found.ExcludedCount,
+            RuleCount = found.Rules.Count,
             Rows = rows.Skip((page - 1) * pageSize).Take(pageSize).ToList(),
             Page = page,
             PageCount = pageCount,
             Offset = (page - 1) * pageSize,
-            Issues = read.Issues,
-            Truncated = read.Truncated,
+            Issues = found.Issues,
+            Truncated = found.Truncated,
             MaxBytesRead = services.Options.MaxBytesRead,
-            RulesError = rules.Error,
+            RulesError = found.RulesError,
             FollowSeconds = services.Options.FollowRefreshSeconds,
         };
         return new RazorComponentResult<LogsPage>();
     }
 
     /// <summary>GET <c>{pattern}/download?file=</c>: a listed log file, as it is on disk.</summary>
-    public IResult Download(HttpContext context)
+    public async Task<IResult> Download(HttpContext context)
     {
         var services = Services.Of(context);
-        var (lookup, file) = LogDirectory.Find(context.Request.Query["file"].ToString(), services.Directory.List());
+        var files = await services.Journal.ListFilesAsync(context.RequestAborted);
+        var (lookup, file) = LogDirectory.Find(context.Request.Query["file"].ToString(), files);
         if (lookup == LogFileLookup.None)
             return TypedResults.BadRequest();
         if (Refusal(lookup) is { } refusal)
             return refusal;
-        FileStream source;
-        try
-        {
-            source = LogFileReader.OpenShared(file!.FullName);
-        }
-        catch (Exception exception) when (exception is FileNotFoundException or DirectoryNotFoundException)
-        {
-            // Deleted by the sink's retention between the listing and the opening.
+        // Null when deleted by the sink's retention between the listing and the opening.
+        if (await services.Journal.OpenFileAsync(file!.Name, context.RequestAborted) is not { } source)
             return TypedResults.NotFound();
-        }
         // Sent as it was when opened, without a length announced up front: the sink may append to it meanwhile.
         return TypedResults.Stream(async body =>
         {
@@ -98,16 +91,17 @@ internal sealed class LogsEndpointHandlers(string pattern)
     }
 
     /// <summary>GET <c>{pattern}/rules</c>: the rules, the new-rule form (prefilled from the address) and the purge.</summary>
-    public IResult RulesPage(HttpContext context)
+    public async Task<IResult> RulesPage(HttpContext context)
     {
         var services = Services.Of(context);
+        var cancellationToken = context.RequestAborted;
         var request = context.Request.Query;
-        var files = services.Directory.List();
-        var read = LogFileReader.Read(files, services.Options.MaxBytesRead);
-        var rules = services.Rules.Load();
+        var files = await services.Journal.ListFilesAsync(cancellationToken);
+        var read = await services.Journal.SearchAsync(new LogSearch { AllTabs = true }, cancellationToken);
         var pattern = Text(request["pattern"]);
         var days = ParseDays(request["days"]) ?? DefaultPurgeDays;
-        var old = services.Directory.OlderThan(days, services.Time.GetUtcNow());
+        var now = services.Time.GetUtcNow();
+        var old = files.Where(file => LogDirectory.IsOlderThan(file.LastWriteUtc.UtcDateTime, days, now)).ToList();
         var tokens = services.Antiforgery.GetAndStoreTokens(context);
         services.State.Rules = new LogRulesModel
         {
@@ -118,8 +112,8 @@ internal sealed class LogsEndpointHandlers(string pattern)
             Pattern = pattern,
             Category = Text(request["category"]),
             PrefillCount = pattern is null ? null : Count(read, new LogRule(0, pattern, Text(request["category"]), Enabled: true)),
-            Rules = rules.Rules.Select(rule => new LogRuleCount(rule, rule.Enabled ? Count(read, rule) : 0)).ToList(),
-            RulesError = rules.Error,
+            Rules = read.Rules.Select(rule => new LogRuleCount(rule, rule.Enabled ? Count(read, rule) : 0)).ToList(),
+            RulesError = read.RulesError,
             PurgeDays = days,
             PurgeCount = old.Count,
             PurgeBytes = old.Sum(file => file.Length),
@@ -137,21 +131,22 @@ internal sealed class LogsEndpointHandlers(string pattern)
         var services = Services.Of(context);
         if (!await services.Antiforgery.IsRequestValidAsync(context))
             return Refused(services, "RefusedToken");
-        var form = await context.Request.ReadFormAsync(context.RequestAborted);
+        var cancellationToken = context.RequestAborted;
+        var form = await context.Request.ReadFormAsync(cancellationToken);
         var action = form["action"].ToString();
         if (action == "add")
-            return AddRule(context, services, form);
+            return await AddRule(context, services, form);
         var parts = action.Split(':');
         if (parts.Length != 2 || !int.TryParse(parts[1], NumberStyles.None, CultureInfo.InvariantCulture, out var id))
             return Refused(services, "RefusedAction");
-        var (update, done) = parts[0] switch
+        var (change, done) = parts[0] switch
         {
-            "enable" => (services.Rules.SetEnabled(id, enabled: true), "enabled"),
-            "disable" => (services.Rules.SetEnabled(id, enabled: false), "disabled"),
-            "delete" => (services.Rules.Delete(id), "deleted"),
-            _ => ((LogRuleUpdate?)null, ""),
+            "enable" => (services.Rules.SetEnabledAsync(id, enabled: true, cancellationToken), "enabled"),
+            "disable" => (services.Rules.SetEnabledAsync(id, enabled: false, cancellationToken), "disabled"),
+            "delete" => (services.Rules.DeleteAsync(id, cancellationToken), "deleted"),
+            _ => ((Task<LogRuleUpdate>?)null, ""),
         };
-        return update is { } result ? Saved(context, result, done) : Refused(services, "RefusedAction");
+        return change is null ? Refused(services, "RefusedAction") : Saved(context, await change, done);
     }
 
     /// <summary>POST <c>{pattern}/purge</c>: <c>days</c> (at least 1) and the <c>confirm</c> box, both required.</summary>
@@ -165,20 +160,20 @@ internal sealed class LogsEndpointHandlers(string pattern)
             return Refused(services, "RefusedConfirm");
         if (ParseDays(form["days"]) is not { } days)
             return Refused(services, "RefusedDays");
-        var purged = services.Directory.Purge(days, services.Time.GetUtcNow());
+        var purged = await services.Journal.PurgeAsync(days, context.RequestAborted);
         return TypedResults.Redirect(Links(context).Rules + QueryString.Create([
             KeyValuePair.Create("purged", (string?)purged.Deleted.ToString(CultureInfo.InvariantCulture)),
             KeyValuePair.Create("failed", (string?)purged.Failed.ToString(CultureInfo.InvariantCulture)),
         ]).ToUriComponent());
     }
 
-    private IResult AddRule(HttpContext context, Services services, IFormCollection form)
+    private async Task<IResult> AddRule(HttpContext context, Services services, IFormCollection form)
     {
         var pattern = Text(form["pattern"]);
         var category = Text(form["category"]);
         if (pattern is null || pattern.Length > LogRule.MaxLength || category?.Length > LogRule.MaxLength)
             return Refused(services, "RefusedPattern");
-        return Saved(context, services.Rules.Add(pattern, category), "added");
+        return Saved(context, await services.Rules.AddAsync(pattern, category, context.RequestAborted), "added");
     }
 
     private IResult Saved(HttpContext context, LogRuleUpdate update, string done) => update switch
@@ -203,7 +198,7 @@ internal sealed class LogsEndpointHandlers(string pattern)
     private LogsLinks Links(HttpContext context) =>
         new(context.Request.PathBase.Value + (_pattern.Length == 0 ? "" : "/" + _pattern));
 
-    private static int Count(LogReadResult read, LogRule rule) => read.Entries.Count(rule.Matches);
+    private static int Count(LogSearchResult read, LogRule rule) => read.Entries.Count(row => rule.Matches(row.Entry));
 
     private static string? Text(Microsoft.Extensions.Primitives.StringValues value)
     {
@@ -221,15 +216,16 @@ internal sealed class LogsEndpointHandlers(string pattern)
 
     /// <summary>The services a request uses, resolved once.</summary>
     private sealed record Services(
-        LogDirectory Directory, LogRuleStore Rules, LogsOptions Options, LogsPageState State, IAntiforgery Antiforgery,
-        TimeProvider Time, IStringLocalizer<LogsStrings> Strings)
+        LogDirectory Directory, ILogJournal Journal, ILogRuleStore Rules, LogsOptions Options, LogsPageState State,
+        IAntiforgery Antiforgery, TimeProvider Time, IStringLocalizer<LogsStrings> Strings)
     {
         public static Services Of(HttpContext context)
         {
             var provider = context.RequestServices;
             return new Services(
                 provider.GetRequiredService<LogDirectory>(),
-                provider.GetRequiredService<LogRuleStore>(),
+                provider.GetRequiredService<ILogJournal>(),
+                provider.GetRequiredService<ILogRuleStore>(),
                 provider.GetRequiredService<IOptions<LogsOptions>>().Value,
                 provider.GetRequiredService<LogsPageState>(),
                 provider.GetRequiredService<IAntiforgery>(),

@@ -38,9 +38,9 @@ public static class LogsEndpointRouteBuilderExtensions
 
         var handlers = new LogsEndpointHandlers(pattern);
         var group = endpoints.MapGroup(pattern);
-        group.MapGet("/", (Func<HttpContext, IResult>)handlers.Journal);
-        group.MapGet("/download", (Func<HttpContext, IResult>)handlers.Download);
-        group.MapGet("/rules", (Func<HttpContext, IResult>)handlers.RulesPage);
+        group.MapGet("/", (Func<HttpContext, Task<IResult>>)handlers.Journal);
+        group.MapGet("/download", (Func<HttpContext, Task<IResult>>)handlers.Download);
+        group.MapGet("/rules", (Func<HttpContext, Task<IResult>>)handlers.RulesPage);
         group.MapPost("/rules", (Func<HttpContext, Task<IResult>>)handlers.PostRules);
         group.MapPost("/purge", (Func<HttpContext, Task<IResult>>)handlers.Purge);
         // Left out of the request metrics, like the performance page: reading the logs is not the site's traffic.

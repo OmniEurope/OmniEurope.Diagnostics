@@ -81,15 +81,17 @@ internal sealed class LogsHost : IAsyncDisposable
 
     public static async Task<LogsHost> StartAsync(
         string directory, Action<LogsOptions>? configure = null, string pattern = "/logs", TimeProvider? time = null,
-        string? contentRoot = null)
+        string? contentRoot = null, Action<IServiceCollection>? before = null, Action<IServiceCollection>? after = null)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { ContentRootPath = contentRoot });
         builder.WebHost.UseTestServer();
+        before?.Invoke(builder.Services);
         builder.Services.AddOmniLogs(options =>
         {
             options.Directory = directory;
             configure?.Invoke(options);
         });
+        after?.Invoke(builder.Services);
         if (time is not null)
             builder.Services.AddSingleton(time);
         var app = builder.Build();

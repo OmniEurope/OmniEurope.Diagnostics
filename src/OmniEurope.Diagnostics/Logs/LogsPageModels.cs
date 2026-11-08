@@ -8,19 +8,28 @@ internal static class LogSelection
     /// The entries <paramref name="query"/> accepts, newest first: those no enabled rule matches go to the journal,
     /// the others to the excluded tab with the first rule that matches them.
     /// </summary>
-    public static (List<LogRow> Journal, List<LogRow> Excluded) Split(IEnumerable<LogEntry> entries, IReadOnlyList<LogRule> rules, LogQuery query)
+    public static (List<LogRow> Journal, List<LogRow> Excluded) Split(IEnumerable<LogEntry> entries, IReadOnlyList<LogRule> rules, LogQuery query) =>
+        Split(entries, rules, query.ToSearch());
+
+    /// <summary>The same split for a <see cref="LogSearch"/>; its file and tab are not applied here.</summary>
+    public static (List<LogRow> Journal, List<LogRow> Excluded) Split(IEnumerable<LogEntry> entries, IReadOnlyList<LogRule> rules, LogSearch search)
     {
-        var enabled = rules.Where(rule => rule.Enabled).ToList();
         var journal = new List<LogRow>();
         var excluded = new List<LogRow>();
-        foreach (var entry in entries.OrderByDescending(entry => entry.Timestamp).ThenByDescending(entry => entry.Sequence))
-        {
-            if (!query.Accepts(entry))
-                continue;
-            var rule = enabled.FirstOrDefault(candidate => candidate.Matches(entry));
-            (rule is null ? journal : excluded).Add(new LogRow(entry, rule));
-        }
+        foreach (var row in Rows(entries, rules, search))
+            (row.Rule is null ? journal : excluded).Add(row);
         return (journal, excluded);
+    }
+
+    /// <summary>The entries <paramref name="search"/> accepts, newest first, each with the first enabled rule that
+    /// matches it, or none.</summary>
+    public static List<LogRow> Rows(IEnumerable<LogEntry> entries, IReadOnlyList<LogRule> rules, LogSearch search)
+    {
+        var enabled = rules.Where(rule => rule.Enabled).ToList();
+        return entries.OrderByDescending(entry => entry.Timestamp).ThenByDescending(entry => entry.Sequence)
+            .Where(search.Accepts)
+            .Select(entry => new LogRow(entry, enabled.FirstOrDefault(candidate => candidate.Matches(entry))))
+            .ToList();
     }
 }
 
