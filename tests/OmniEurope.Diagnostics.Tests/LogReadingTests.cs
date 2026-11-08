@@ -64,6 +64,20 @@ public sealed class LogReadingTests : IDisposable
     public void AFormatOnText_LeavesTheTextAsWritten() =>
         Assert.Equal("plain", MessageTemplateRenderer.Format(JsonDocument.Parse("\"plain\"").RootElement, "yyyy"));
 
+    [Theory]
+    [InlineData("N999999999")]
+    [InlineData("F100")]
+    [InlineData("000000000000000000000000000000000")]
+    public void AnOversizedFormat_FromTheFile_LeavesTheNumberUnformatted(string format) =>
+        Assert.Equal("42", MessageTemplateRenderer.Format(JsonDocument.Parse("42").RootElement, format));
+
+    [Fact]
+    public void ATwoDigitPrecision_AndAnEmptyFormat_AreStillApplied()
+    {
+        Assert.Equal("42.00", MessageTemplateRenderer.Format(JsonDocument.Parse("42").RootElement, "F2"));
+        Assert.Equal("42", MessageTemplateRenderer.Format(JsonDocument.Parse("42").RootElement, ""));
+    }
+
     [Fact]
     public void TheCorrelation_PrefersCorrelationId_ThenRequestId_ThenTheTraceId()
     {

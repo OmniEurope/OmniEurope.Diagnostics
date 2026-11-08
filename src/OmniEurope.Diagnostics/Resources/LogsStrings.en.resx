@@ -106,4 +106,5 @@
   <data name="RefusedPattern" xml:space="preserve"><value>The message text is required, and the text and the category are 1,000 characters at most.</value></data>
   <data name="RefusedConfirm" xml:space="preserve"><value>Tick the confirmation box to purge.</value></data>
   <data name="RefusedDays" xml:space="preserve"><value>The number of days must be a whole number of at least 1.</value></data>
+  <data name="RulesWriteFailed" xml:space="preserve"><value>The rules file could not be saved (read-only folder, full disk or locked file): the old one is kept.</value></data>
 </root>

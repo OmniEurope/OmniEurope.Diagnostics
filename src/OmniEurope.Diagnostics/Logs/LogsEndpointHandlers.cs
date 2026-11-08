@@ -79,12 +79,21 @@ internal sealed class LogsEndpointHandlers(string pattern)
             return TypedResults.BadRequest();
         if (Refusal(lookup) is { } refusal)
             return refusal;
+        FileStream source;
+        try
+        {
+            source = LogFileReader.OpenShared(file!.FullName);
+        }
+        catch (Exception exception) when (exception is FileNotFoundException or DirectoryNotFoundException)
+        {
+            // Deleted by the sink's retention between the listing and the opening.
+            return TypedResults.NotFound();
+        }
         // Sent as it was when opened, without a length announced up front: the sink may append to it meanwhile.
-        var path = file!.FullName;
         return TypedResults.Stream(async body =>
         {
-            await using var source = LogFileReader.OpenShared(path);
-            await LogFileReader.CopySnapshotAsync(source, body, context.RequestAborted);
+            await using (source)
+                await LogFileReader.CopySnapshotAsync(source, body, context.RequestAborted);
         }, "application/octet-stream", file.Name);
     }
 
@@ -176,6 +185,8 @@ internal sealed class LogsEndpointHandlers(string pattern)
     {
         LogRuleUpdate.Saved => TypedResults.Redirect(Links(context).Rules + QueryString.Create("done", done).ToUriComponent()),
         LogRuleUpdate.NotFound => TypedResults.NotFound(),
+        LogRuleUpdate.WriteFailed => TypedResults.Text(Services.Of(context).Strings["RulesWriteFailed"], "text/plain; charset=utf-8",
+            statusCode: StatusCodes.Status500InternalServerError),
         _ => TypedResults.Conflict(),
     };
 

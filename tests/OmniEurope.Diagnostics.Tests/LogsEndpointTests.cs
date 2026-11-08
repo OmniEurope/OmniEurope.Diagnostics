@@ -276,6 +276,18 @@ public sealed class LogsEndpointTests : IDisposable
     }
 
     [Fact]
+    public async Task ARulesFileThatCannotBeWritten_AnswersA500WithItsReason()
+    {
+        System.IO.Directory.CreateDirectory(_folder.File("omni-log-rules.json")); // a folder in its place: the move fails on every OS
+        await using var host = await LogsHost.StartAsync(_folder.Path);
+
+        var response = await host.PostWithTokenAsync("/logs/rules", ("action", "add"), ("pattern", "x"));
+
+        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+        Assert.Contains("n'a pas pu être enregistré", await response.Content.ReadAsStringAsync(Ct), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task ThePurge_DeletesOnlyOldMatchingFiles_AndKeepsTheRulesFile()
     {
         _folder.Write("app-old.json", [Clef.Line(Clef.Noon, "old")], Today.AddDays(-40));

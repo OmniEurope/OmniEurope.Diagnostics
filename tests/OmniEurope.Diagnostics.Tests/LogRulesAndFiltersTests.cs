@@ -137,6 +137,16 @@ public sealed class LogRulesAndFiltersTests : IDisposable
     }
 
     [Fact]
+    public void ARulesFileThatCannotBeWritten_IsReported_AndLeavesNoTemporaryFile()
+    {
+        System.IO.Directory.CreateDirectory(Path.Combine(_folder.Path, "omni-log-rules.json")); // a folder in its place: the move fails on every OS
+        var store = new LogRuleStore(Directory());
+
+        Assert.Equal(LogRuleUpdate.WriteFailed, store.Add("x", null));
+        Assert.Empty(System.IO.Directory.GetFiles(_folder.Path));
+    }
+
+    [Fact]
     public async Task ConcurrentAdds_NeverLoseARule()
     {
         var store = new LogRuleStore(Directory());
@@ -205,6 +215,16 @@ public sealed class LogRulesAndFiltersTests : IDisposable
 
         Assert.Equal(expected, lookup);
         Assert.Equal(expected == LogFileLookup.Found, file is not null);
+    }
+
+    [Fact]
+    public void TheExactName_WinsOverAnotherCase_ThenAnyCaseIsFound()
+    {
+        FileInfo upper = new(Path.Combine(_folder.Path, "App.json")), lower = new(Path.Combine(_folder.Path, "app.json"));
+
+        Assert.Same(lower, LogDirectory.Find("app.json", [upper, lower]).File);
+        Assert.Same(upper, LogDirectory.Find("App.json", [upper, lower]).File);
+        Assert.Same(upper, LogDirectory.Find("APP.JSON", [upper]).File);
     }
 
     [Fact]

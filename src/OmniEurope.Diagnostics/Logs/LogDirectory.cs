@@ -95,7 +95,9 @@ internal sealed class LogDirectory
             return (LogFileLookup.None, null);
         if (!IsBareName(name))
             return (LogFileLookup.Invalid, null);
-        var file = files.FirstOrDefault(listed => string.Equals(listed.Name, name, StringComparison.OrdinalIgnoreCase));
+        // The exact name first: a case-sensitive file system may hold both app.json and App.json.
+        var file = files.FirstOrDefault(listed => string.Equals(listed.Name, name, StringComparison.Ordinal))
+            ?? files.FirstOrDefault(listed => string.Equals(listed.Name, name, StringComparison.OrdinalIgnoreCase));
         return file is null ? (LogFileLookup.Missing, null) : (LogFileLookup.Found, file);
     }
 

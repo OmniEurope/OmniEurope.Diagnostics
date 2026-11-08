@@ -2,6 +2,18 @@
 
 Notable changes to this project are documented here, following the Keep a Changelog format.
 
+## [Unreleased]
+
+### Fixed
+
+- Logs page: a hole format read from a log file is applied only up to 32 characters and two precision digits
+  (`{Amount:N999999999}` built a gigantic string on every display); longer formats leave the value unformatted.
+- Logs page: a rules file that cannot be written (read-only folder, full disk, locked file) answers a localized 500
+  and leaves no temporary file behind, instead of an unhandled exception.
+- Logs page: a file deleted by the sink's retention between the listing and the download answers 404 instead of 500.
+- Logs page: a requested file name matches the exact name first, so `App.json` and `app.json` on a case-sensitive
+  file system are not mixed up.
+
 ## [1.0.0] - 2026-11-08
 
 ### Added

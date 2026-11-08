@@ -106,4 +106,5 @@
   <data name="RefusedPattern" xml:space="preserve"><value>Le texte du message est obligatoire, et le texte comme la catégorie font 1 000 caractères au plus.</value></data>
   <data name="RefusedConfirm" xml:space="preserve"><value>Cochez la case de confirmation pour purger.</value></data>
   <data name="RefusedDays" xml:space="preserve"><value>Le nombre de jours doit être un entier d&apos;au moins 1.</value></data>
+  <data name="RulesWriteFailed" xml:space="preserve"><value>Le fichier de règles n&apos;a pas pu être enregistré (dossier en lecture seule, disque plein ou fichier verrouillé) : l&apos;ancien est conservé.</value></data>
 </root>

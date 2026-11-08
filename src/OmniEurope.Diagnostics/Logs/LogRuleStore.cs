@@ -40,6 +40,9 @@ internal enum LogRuleUpdate
 
     /// <summary>The file exists but cannot be read: it is never overwritten, nothing was written.</summary>
     Unreadable,
+
+    /// <summary>The file could not be written (read-only folder, full disk, locked file): the old one is kept.</summary>
+    WriteFailed,
 }
 
 /// <summary>
@@ -103,17 +106,30 @@ internal sealed class LogRuleStore(LogDirectory directory)
             var rules = set.Rules.ToList();
             if (!change(rules, set.NextId))
                 return LogRuleUpdate.NotFound;
-            Save(rules, Math.Max(set.NextId, AfterLast(rules)));
-            return LogRuleUpdate.Saved;
+            return Save(rules, Math.Max(set.NextId, AfterLast(rules))) ? LogRuleUpdate.Saved : LogRuleUpdate.WriteFailed;
         }
     }
 
-    private void Save(List<LogRule> rules, int nextId)
+    private bool Save(List<LogRule> rules, int nextId)
     {
-        Directory.CreateDirectory(directory.FullPath);
         var temporary = Path.Combine(directory.FullPath, $"{directory.RulesFile}.{Guid.NewGuid():N}.tmp");
-        File.WriteAllText(temporary, JsonSerializer.Serialize(new RulesDocument(nextId, rules), Json));
-        File.Move(temporary, directory.RulesPath, overwrite: true);
+        try
+        {
+            Directory.CreateDirectory(directory.FullPath);
+            File.WriteAllText(temporary, JsonSerializer.Serialize(new RulesDocument(nextId, rules), Json));
+            File.Move(temporary, directory.RulesPath, overwrite: true);
+            return true;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            return false;
+        }
+        finally
+        {
+            // Left behind only when the move failed: the rules file prefix keeps it out of the purge, so it goes now.
+            if (File.Exists(temporary))
+                File.Delete(temporary);
+        }
     }
 
     private static int AfterLast(List<LogRule> rules) => rules.Select(rule => rule.Id).DefaultIfEmpty(0).Max() + 1;

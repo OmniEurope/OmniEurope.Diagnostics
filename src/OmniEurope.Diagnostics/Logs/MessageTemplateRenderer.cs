@@ -65,8 +65,20 @@ internal static class MessageTemplateRenderer
         return value.ValueKind == JsonValueKind.String ? value.GetString()! : value.GetRawText();
     }
 
+    /// <summary>The longest format applied: the format comes from the log file, and a precision such as N999999999
+    /// would build a string of a billion characters on each display. Longer formats leave the value unformatted.</summary>
+    internal const int MaxFormatLength = 32;
+
+    /// <summary>The most precision digits a standard format may carry (N2, F3, D12 is refused): two are enough.</summary>
+    private const int MaxPrecisionDigits = 2;
+
     private static bool TryFormat(JsonElement value, string format, out string formatted)
     {
+        if (format.Length > MaxFormatLength || PrecisionDigits(format) > MaxPrecisionDigits)
+        {
+            formatted = "";
+            return false;
+        }
         try
         {
             formatted = value.ValueKind switch
@@ -86,4 +98,8 @@ internal static class MessageTemplateRenderer
             return false;
         }
     }
+
+    /// <summary>The number of precision digits of a standard format (a letter then digits), or 0 for any other format.</summary>
+    private static int PrecisionDigits(string format) =>
+        format.Length > 1 && char.IsAsciiLetter(format[0]) && format.AsSpan(1).IndexOfAnyExceptInRange('0', '9') < 0 ? format.Length - 1 : 0;
 }
