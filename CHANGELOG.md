@@ -2,7 +2,7 @@
 
 Notable changes to this project are documented here, following the Keep a Changelog format.
 
-## [Unreleased]
+## [1.0.0] - 2026-11-08
 
 ### Added
 
@@ -40,7 +40,9 @@ Notable changes to this project are documented here, following the Keep a Change
 
 - A test of `StopAsync`: the collection stops, and stopping before startup or twice is harmless.
 
-## [1.1.1] - 2026-10-08
+<!-- The entries below are the history of OmniEurope.Performance, the previous package id. -->
+
+## [OmniEurope.Performance 1.1.1] - 2026-10-08
 
 ### Fixed
 
@@ -53,7 +55,7 @@ Notable changes to this project are documented here, following the Keep a Change
 - ReportGenerator is a pinned local tool, so `.\ylaunch.ps1 -c` no longer needs a global install.
 - The coverage floors are defined once, in `scripts/coverage-gate.ps1`.
 
-## [1.1.0] - 2026-10-07
+## [OmniEurope.Performance 1.1.0] - 2026-10-07
 
 ### Removed
 
@@ -61,7 +63,7 @@ Notable changes to this project are documented here, following the Keep a Change
   are internal. A host that wants its own look renders `RequestPerformanceRecorder.Summarize()` (breaking change for a
   host that used either type).
 
-## [1.0.1] - 2026-10-07
+## [OmniEurope.Performance 1.0.1] - 2026-10-07
 
 ### Added
 
@@ -73,7 +75,7 @@ Notable changes to this project are documented here, following the Keep a Change
 - README, the package page on NuGet, written in English.
 - Changelog and repository documentation written in English.
 
-## [1.0.0] - 2026-10-07
+## [OmniEurope.Performance 1.0.0] - 2026-10-07
 
 ### Added
 
@@ -86,7 +88,7 @@ Notable changes to this project are documented here, following the Keep a Change
 - First stable version: the public API now follows semantic versioning. Compatibility note: 1.1.0 is a historical
   exception to this policy; its Removed section documents the breaking change and migration to `RequestPerformanceRecorder.Summarize()`.
 
-## [0.2.0] - 2026-10-06
+## [OmniEurope.Performance 0.2.0] - 2026-10-06
 
 ### Added
 
@@ -112,7 +114,7 @@ Notable changes to this project are documented here, following the Keep a Change
 - Automatic dependency update configuration: no more automatic update requests; the local launcher reports outdated
   packages and SDK.
 
-## [0.1.0] - 2026-10-06
+## [OmniEurope.Performance 0.1.0] - 2026-10-06
 
 ### Added
 
