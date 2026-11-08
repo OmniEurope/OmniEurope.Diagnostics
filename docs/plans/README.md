@@ -13,7 +13,9 @@ describes a piece of work, not the state of the product.
 
 ## Active plans
 
-None.
+| Plan | Subject |
+|---|---|
+| [PLAN-002](PLAN-002-file-logging-and-public-log-reader.md) | File logging and a public log reader (1.1.0) |
 
 ## Archived plans
 
