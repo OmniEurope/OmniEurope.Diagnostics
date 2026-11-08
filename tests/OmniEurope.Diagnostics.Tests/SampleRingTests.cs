@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: EUPL-1.2
-namespace OmniEurope.Performance.Tests;
+namespace OmniEurope.Diagnostics.Tests;
 
 /// <summary>
 /// The ring on its own, fed out of order as two simultaneous requests can feed it: they are dated before

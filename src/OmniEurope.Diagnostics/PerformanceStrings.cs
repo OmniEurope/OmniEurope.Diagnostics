@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: EUPL-1.2
-namespace OmniEurope.Performance;
+namespace OmniEurope.Diagnostics;
 
 /// <summary>
 /// Marker type of the package's texts (<c>Resources/PerformanceStrings*.resx</c>), read through

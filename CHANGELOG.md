@@ -17,6 +17,13 @@ Notable changes to this project are documented here, following the Keep a Change
 
 ### Changed
 
+- The package continues `OmniEurope.Performance` under a new id, `OmniEurope.Diagnostics`: the package, assembly,
+  namespaces, projects and repository are renamed; the performance feature keeps its type names and its
+  `/performance` route. `OmniEurope.Performance` is retired step by step. As a new id, the version restarts at
+  1.0.0; the earlier entries below are the history of `OmniEurope.Performance`.
+- Test dependencies move to their latest stable versions: bUnit 2.14.0, Microsoft.AspNetCore.TestHost 10.0.14,
+  Microsoft.Testing.Extensions.TrxReport 2.5.2, xUnit v3 4.0.2.
+- The repository records that it uses no Dependabot (`.config/verify-rules.json`): dependencies are updated by hand.
 - The .NET SDK floor moves to 10.0.403 (runtime 10.0.14) for CVE-2026-111497.
 - The CRAP gate identifies a line by its file's full path across reports and refuses a report without any class.
 

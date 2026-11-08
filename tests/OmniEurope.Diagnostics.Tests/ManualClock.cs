@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: EUPL-1.2
-namespace OmniEurope.Performance.Tests;
+namespace OmniEurope.Diagnostics.Tests;
 
 /// <summary>A clock the test moves by hand.</summary>
 internal sealed class ManualClock(DateTimeOffset start) : TimeProvider

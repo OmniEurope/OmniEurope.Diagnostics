@@ -48,9 +48,9 @@ jobs:
         run: |
           $version = $env:TAG -replace '^v', ''
           $package = Get-ChildItem artifacts/packages/*.nupkg | Select-Object -First 1
-          $expected = "OmniEurope.Performance.$version.nupkg"
+          $expected = "OmniEurope.Diagnostics.$version.nupkg"
           if (-not $package -or $package.Name -ne $expected) { throw "Expected $expected for tag $env:TAG, found $($package.Name)." }
-          if (-not (Test-Path "artifacts/packages/OmniEurope.Performance.$version.snupkg")) { throw 'The symbol package is missing.' }
+          if (-not (Test-Path "artifacts/packages/OmniEurope.Diagnostics.$version.snupkg")) { throw 'The symbol package is missing.' }
           "package_path=$($package.FullName)" >> $env:GITHUB_OUTPUT
       - name: Authenticate to NuGet.org
         id: login

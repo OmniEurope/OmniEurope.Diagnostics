@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: EUPL-1.2
 using System.Globalization;
 
-namespace OmniEurope.Performance;
+namespace OmniEurope.Diagnostics;
 
 /// <summary>How the page writes durations and instants, in the current culture.</summary>
 internal static class PerformanceFormat

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: EUPL-1.2
-namespace OmniEurope.Performance;
+namespace OmniEurope.Diagnostics;
 
 /// <summary>
 /// The requests the per-route percentiles are computed from, in a ring allocated once at its full size:

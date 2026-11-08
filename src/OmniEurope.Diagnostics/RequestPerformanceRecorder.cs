@@ -5,7 +5,7 @@ using System.Runtime.CompilerServices;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
-namespace OmniEurope.Performance;
+namespace OmniEurope.Diagnostics;
 
 /// <summary>
 /// Listens, in process, to the request-duration histogram ASP.NET Core already publishes

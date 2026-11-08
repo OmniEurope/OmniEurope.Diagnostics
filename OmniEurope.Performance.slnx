@@ -1,8 +1,0 @@
-<Solution>
-  <Folder Name="/src/">
-    <Project Path="src/OmniEurope.Performance/OmniEurope.Performance.csproj" />
-  </Folder>
-  <Folder Name="/tests/">
-    <Project Path="tests/OmniEurope.Performance.Tests/OmniEurope.Performance.Tests.csproj" />
-  </Folder>
-</Solution>

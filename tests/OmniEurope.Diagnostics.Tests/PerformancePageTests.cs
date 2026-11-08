@@ -3,9 +3,9 @@ using System.Globalization;
 using System.Runtime.CompilerServices;
 using Bunit;
 using Microsoft.Extensions.DependencyInjection;
-using OmniEurope.Performance.Components;
+using OmniEurope.Diagnostics.Components;
 
-namespace OmniEurope.Performance.Tests;
+namespace OmniEurope.Diagnostics.Tests;
 
 /// <summary>
 /// The figures as the page writes them from a recorder fed by hand: semantic tables without a class or a style,

@@ -15,7 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../src/OmniEurope.Performance/OmniEurope.Performance.csproj" />
+    <ProjectReference Include="../../src/OmniEurope.Diagnostics/OmniEurope.Diagnostics.csproj" />
   </ItemGroup>
 
   <ItemGroup>

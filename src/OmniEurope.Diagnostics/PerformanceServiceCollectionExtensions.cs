@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: EUPL-1.2
 using Microsoft.Extensions.Options;
-using OmniEurope.Performance;
+using OmniEurope.Diagnostics;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
-/// <summary>Registers the performance measurement of OmniEurope.Performance.</summary>
+/// <summary>Registers the performance measurement of OmniEurope.Diagnostics.</summary>
 public static class PerformanceServiceCollectionExtensions
 {
     /// <summary>The configuration section <see cref="PerformanceOptions"/> is read from: <c>OmniPerformance:Window</c>, say.</summary>

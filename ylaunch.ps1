@@ -1,7 +1,7 @@
 #!/usr/bin/env pwsh
 <#
 .SYNOPSIS
-    Build and test OmniEurope.Performance.
+    Build and test OmniEurope.Diagnostics.
 .DESCRIPTION
     Package launcher: a library has no host and no database, so the launcher builds
     the solution and runs its test suites. This file holds only what is specific to the repository: the
@@ -42,11 +42,11 @@ if ($PSVersionTable.PSVersion -lt [version]"7.2") {
 
 # ---------- project configuration (the only project-specific part) ----------
 $LaunchConfig = @{
-    Name         = "OmniEurope.Performance"
-    Solution     = "OmniEurope.Performance.slnx"
+    Name         = "OmniEurope.Diagnostics"
+    Solution     = "OmniEurope.Diagnostics.slnx"
     OwnedFolders = @("src")
     Tests        = @(
-        @{ Key = "Library"; Flag = "TestLibrary"; Alias = "tl"; Kind = "Unit"; Coverage = $true; Project = "tests\OmniEurope.Performance.Tests\OmniEurope.Performance.Tests.csproj" }
+        @{ Key = "Library"; Flag = "TestLibrary"; Alias = "tl"; Kind = "Unit"; Coverage = $true; Project = "tests\OmniEurope.Diagnostics.Tests\OmniEurope.Diagnostics.Tests.csproj" }
     )
     Exceptions   = @{ E2E = "package: no application to drive" }
 }

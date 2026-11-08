@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: EUPL-1.2
-namespace OmniEurope.Performance;
+namespace OmniEurope.Diagnostics;
 
 /// <summary>Pure: turns kept samples into per-route percentiles beside the slowest calls, so the arithmetic
 /// is tested without a listener or a clock.</summary>

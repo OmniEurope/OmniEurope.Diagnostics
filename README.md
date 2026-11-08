@@ -1,5 +1,5 @@
 <!-- SPDX-License-Identifier: EUPL-1.2 -->
-# OmniEurope.Performance
+# OmniEurope.Diagnostics
 
 A Razor class library that adds **a request performance page** to an ASP.NET Core application, kept to the bare
 minimum: **no theme, no styling, no third-party dependency**, with a collector memory budget of 2 MiB by default.
@@ -8,7 +8,7 @@ A single NuGet package, licensed under EUPL-1.2.
 ## Usage
 
 ```powershell
-dotnet add package OmniEurope.Performance
+dotnet add package OmniEurope.Diagnostics
 ```
 
 ```csharp
@@ -98,7 +98,8 @@ Continuous integration applies the same checks.
 Before building, the launcher reports, without blocking, a .NET SDK newer than the one in use and outdated NuGet
 packages: the repository opens no automatic update request.
 
-Git flow: `main` for published versions, `develop` for integration, `feature/*` for work. A published GitHub release
+Git flow: `main` for released versions, `develop` for integration. Contributors branch `feature/*` from `develop` and
+open a pull request to `develop`; the maintainer commits to `develop` directly. A published GitHub release
 (tag `1.0.0` or `v1.0.0`, equal to the package version) triggers the NuGet publication of the package validated by
 continuous integration.
 

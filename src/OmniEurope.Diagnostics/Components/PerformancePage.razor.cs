@@ -3,7 +3,7 @@ using System.Globalization;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Localization;
 
-namespace OmniEurope.Performance.Components;
+namespace OmniEurope.Diagnostics.Components;
 
 /// <summary>A complete, unstyled HTML document of the host's request performance.</summary>
 public partial class PerformancePage

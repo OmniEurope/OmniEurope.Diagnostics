@@ -2,8 +2,8 @@
   <PropertyGroup>
     <!-- Every public member carries an XML doc (CS1591 is an error under TreatWarningsAsErrors). -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <PackageId>OmniEurope.Performance</PackageId>
-    <Version>1.1.1</Version>
+    <PackageId>OmniEurope.Diagnostics</PackageId>
+    <Version>1.0.0</Version>
     <Authors>OmniEurope contributors</Authors>
     <Company>OmniEurope</Company>
     <Description>A minimal, unstyled ASP.NET Core page that measures the request performance of the site it is mounted in: the slowest calls and per-route percentiles over a configurable window, with a collector memory budget of 2 MiB by default.</Description>
@@ -11,8 +11,8 @@
     <PackageLicenseExpression>EUPL-1.2</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <RepositoryType>git</RepositoryType>
-    <RepositoryUrl>https://github.com/OmniEurope/OmniEurope.Performance</RepositoryUrl>
-    <PackageProjectUrl>https://github.com/OmniEurope/OmniEurope.Performance</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/OmniEurope/OmniEurope.Diagnostics</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/OmniEurope/OmniEurope.Diagnostics</PackageProjectUrl>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
     <IsPackable>true</IsPackable>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>

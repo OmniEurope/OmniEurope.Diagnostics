@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: EUPL-1.2
-namespace OmniEurope.Performance.Tests;
+namespace OmniEurope.Diagnostics.Tests;
 
 /// <summary>
 /// The arithmetic of the report on its own, then the recorder's filters, window, cap and slowest list

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: EUPL-1.2
-namespace OmniEurope.Performance;
+namespace OmniEurope.Diagnostics;
 
 /// <summary>
 /// What <see cref="RequestPerformanceRecorder"/> keeps, for how long and in how much memory. Configured

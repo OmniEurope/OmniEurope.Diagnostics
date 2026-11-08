@@ -4,4 +4,4 @@ using Microsoft.Extensions.Localization;
 
 // The texts live in Resources/ whatever ResourcesPath the host gives AddLocalization.
 [assembly: ResourceLocation("Resources")]
-[assembly: InternalsVisibleTo("OmniEurope.Performance.Tests")]
+[assembly: InternalsVisibleTo("OmniEurope.Diagnostics.Tests")]

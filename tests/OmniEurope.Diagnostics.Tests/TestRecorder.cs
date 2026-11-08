@@ -3,7 +3,7 @@ using System.Diagnostics.Metrics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
-namespace OmniEurope.Performance.Tests;
+namespace OmniEurope.Diagnostics.Tests;
 
 /// <summary>A recorder fed by hand, on its own meter factory.</summary>
 internal sealed class TestRecorder : IDisposable

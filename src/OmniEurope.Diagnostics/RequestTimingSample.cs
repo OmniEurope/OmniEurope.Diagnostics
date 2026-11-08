@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: EUPL-1.2
-namespace OmniEurope.Performance;
+namespace OmniEurope.Diagnostics;
 
 /// <summary>One timed request, under its route template: no concrete path, identifier or query value.</summary>
 /// <param name="At">When the request ended, in UTC.</param>

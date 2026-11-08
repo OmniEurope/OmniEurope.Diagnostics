@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: EUPL-1.2
-namespace OmniEurope.Performance;
+namespace OmniEurope.Diagnostics;
 
 /// <summary>What the recorder holds: the slowest calls of the window and the percentiles of every route.</summary>
 /// <param name="WindowStart">Start of the window the slowest calls cover, in UTC: the window's length ago, or

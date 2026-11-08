@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: EUPL-1.2
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Routing;
-using OmniEurope.Performance.Components;
+using OmniEurope.Diagnostics.Components;
 
 namespace Microsoft.AspNetCore.Builder;
 
-/// <summary>Maps the performance page of OmniEurope.Performance.</summary>
+/// <summary>Maps the performance page of OmniEurope.Diagnostics.</summary>
 public static class PerformanceEndpointRouteBuilderExtensions
 {
     /// <summary>The address the page answers on when the host names none.</summary>

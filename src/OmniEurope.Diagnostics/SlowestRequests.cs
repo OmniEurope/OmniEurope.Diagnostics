@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: EUPL-1.2
 using System.Runtime.CompilerServices;
 
-namespace OmniEurope.Performance;
+namespace OmniEurope.Diagnostics;
 
 /// <summary>
 /// The slowest requests of the window, kept apart from the rolling samples: however busy the site, the

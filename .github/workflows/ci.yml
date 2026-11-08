@@ -18,17 +18,17 @@ jobs:
         with:
           global-json-file: global.json
       - name: Restore
-        run: dotnet restore OmniEurope.Performance.slnx
+        run: dotnet restore OmniEurope.Diagnostics.slnx
       - name: Build
-        run: dotnet build OmniEurope.Performance.slnx --configuration Release --no-restore
+        run: dotnet build OmniEurope.Diagnostics.slnx --configuration Release --no-restore
       - name: Tests and coverage
         # global.json runs dotnet test on Microsoft.Testing.Platform: xunit.v3 runs the suite, TrxReport
         # writes the TRX and coverlet.MTP the Cobertura report, restricted to the published library.
         run: >-
-          dotnet test --project tests/OmniEurope.Performance.Tests/OmniEurope.Performance.Tests.csproj
+          dotnet test --project tests/OmniEurope.Diagnostics.Tests/OmniEurope.Diagnostics.Tests.csproj
           --configuration Release --no-build --no-progress
           --report-trx --report-trx-filename tests.trx --results-directory artifacts/coverage
-          --coverlet --coverlet-output-format cobertura --coverlet-include "[OmniEurope.Performance]*"
+          --coverlet --coverlet-output-format cobertura --coverlet-include "[OmniEurope.Diagnostics]*"
       - name: Verify the test results exist
         # A run that wrote no result file is a failure, whatever its exit code.
         shell: pwsh
@@ -46,7 +46,7 @@ jobs:
         shell: pwsh
         run: ./scripts/crap-gate.ps1 -CoverageRoot artifacts/coverage
       - name: Pack
-        run: dotnet pack src/OmniEurope.Performance/OmniEurope.Performance.csproj --configuration Release --no-build --output artifacts/packages
+        run: dotnet pack src/OmniEurope.Diagnostics/OmniEurope.Diagnostics.csproj --configuration Release --no-build --output artifacts/packages
       - name: Package content
         # What a consumer receives: the library, its documentation and English texts, the README, the
         # symbols; no stylesheet, no script, no package dependency beyond the ASP.NET Core framework.
@@ -59,12 +59,12 @@ jobs:
           $zip = [IO.Compression.ZipFile]::OpenRead($package.FullName)
           try {
             $entries = @($zip.Entries.FullName)
-            foreach ($required in 'README.md', 'lib/net10.0/OmniEurope.Performance.dll', 'lib/net10.0/OmniEurope.Performance.xml', 'lib/net10.0/en/OmniEurope.Performance.resources.dll') {
+            foreach ($required in 'README.md', 'lib/net10.0/OmniEurope.Diagnostics.dll', 'lib/net10.0/OmniEurope.Diagnostics.xml', 'lib/net10.0/en/OmniEurope.Diagnostics.resources.dll') {
               if ($entries -notcontains $required) { throw "Missing from the package: $required" }
             }
             $styled = @($entries | Where-Object { $_ -match '\.(css|js|mjs)$' })
             if ($styled) { throw "The package must ship no stylesheet or script: $($styled -join ', ')" }
-            $reader = [IO.StreamReader]::new(($zip.Entries | Where-Object FullName -eq 'OmniEurope.Performance.nuspec').Open())
+            $reader = [IO.StreamReader]::new(($zip.Entries | Where-Object FullName -eq 'OmniEurope.Diagnostics.nuspec').Open())
             try { [xml]$nuspec = $reader.ReadToEnd() } finally { $reader.Dispose() }
           } finally { $zip.Dispose() }
           $dependencies = @($nuspec.package.metadata.dependencies.group | ForEach-Object { $_.dependency } | Where-Object { $_ })

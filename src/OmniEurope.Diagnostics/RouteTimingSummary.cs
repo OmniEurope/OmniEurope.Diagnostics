@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: EUPL-1.2
-namespace OmniEurope.Performance;
+namespace OmniEurope.Diagnostics;
 
 /// <summary>The timings of one route template and method, in milliseconds.</summary>
 /// <param name="Method">The HTTP method.</param>
