@@ -62,7 +62,7 @@ public sealed class LogsEndpointTests : IDisposable
         Assert.Contains("Lignes 1 à 4 sur 4, de la plus récente à la plus ancienne.", html, StringComparison.Ordinal);
         Assert.True(html.IndexOf("HYPERLINK", StringComparison.Ordinal) < html.IndexOf("Order 7 failed", StringComparison.Ordinal));
         Assert.True(html.IndexOf("Order 7 failed", StringComparison.Ordinal) < html.IndexOf("Yesterday started", StringComparison.Ordinal));
-        Assert.Contains("<td><strong>Error</strong></td>", html, StringComparison.Ordinal);
+        Assert.Contains("<td><strong>Erreur</strong></td>", html, StringComparison.Ordinal);
         Assert.Contains("<details id=\"entry-2\">", html, StringComparison.Ordinal);
         Assert.Contains("System.InvalidOperationException: &lt;b&gt;boom&lt;/b&gt;", raw, StringComparison.Ordinal);
         Assert.DoesNotContain("<b>boom</b>", raw, StringComparison.Ordinal);

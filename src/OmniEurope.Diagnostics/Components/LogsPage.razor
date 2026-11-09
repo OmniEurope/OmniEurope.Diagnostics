@@ -73,7 +73,7 @@
                     <option value="">@L["AllLevels"]</option>
                     @foreach (var level in Enum.GetValues<LogSeverity>())
                     {
-                        <option selected="@(level == Model.Query.MinLevel)">@level</option>
+                        <option value="@level" selected="@(level == Model.Query.MinLevel)">@Severity(level)</option>
                     }
                 </select>
             </p>
@@ -164,7 +164,7 @@
                         var entry = row.Entry;
                         <tr>
                             <td><time datetime="@LogsFormat.Iso(entry.Timestamp)">@LogsFormat.Date(entry.Timestamp, L)</time></td>
-                            <td>@if (entry.Level >= LogSeverity.Error) { <strong>@entry.Level</strong> } else { @entry.Level }</td>
+                            <td>@if (entry.Level >= LogSeverity.Error) { <strong>@Severity(entry.Level)</strong> } else { @Severity(entry.Level) }</td>
                             <td>@if (entry.Category is not null) { <code>@entry.Category</code> }</td>
                             <td>@LogsFormat.Preview(entry.Message)</td>
                             <td>@if ((row.Rule?.Pattern ?? entry.CorrelationId) is { } marker) { <code>@marker</code> }</td>
@@ -214,12 +214,12 @@
                 var row = Model.Rows[index];
                 var entry = row.Entry;
                 <details id="@Anchor(index)">
-                    <summary>@LogsFormat.Date(entry.Timestamp, L), @entry.Level, @LogsFormat.Preview(entry.Message)</summary>
+                    <summary>@LogsFormat.Date(entry.Timestamp, L), @Severity(entry.Level), @LogsFormat.Preview(entry.Message)</summary>
                     <dl>
                         <dt>@L["Date"]</dt>
                         <dd><time datetime="@LogsFormat.Iso(entry.Timestamp)">@LogsFormat.Date(entry.Timestamp, L) @L["Utc"]</time></dd>
                         <dt>@L["LevelColumn"]</dt>
-                        <dd>@entry.Level</dd>
+                        <dd>@Severity(entry.Level)</dd>
                         @if (entry.Category is not null)
                         {
                             <dt>@L["Category"]</dt>

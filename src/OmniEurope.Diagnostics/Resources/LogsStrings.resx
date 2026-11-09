@@ -17,6 +17,12 @@
   <data name="AllFiles" xml:space="preserve"><value>Tous les fichiers</value></data>
   <data name="Level" xml:space="preserve"><value>Niveau minimal</value></data>
   <data name="AllLevels" xml:space="preserve"><value>Tous les niveaux</value></data>
+  <data name="SeverityVerbose" xml:space="preserve"><value>Détail</value></data>
+  <data name="SeverityDebug" xml:space="preserve"><value>Débogage</value></data>
+  <data name="SeverityInformation" xml:space="preserve"><value>Information</value></data>
+  <data name="SeverityWarning" xml:space="preserve"><value>Avertissement</value></data>
+  <data name="SeverityError" xml:space="preserve"><value>Erreur</value></data>
+  <data name="SeverityFatal" xml:space="preserve"><value>Fatale</value></data>
   <data name="From" xml:space="preserve"><value>Du</value></data>
   <data name="To" xml:space="preserve"><value>au</value></data>
   <data name="Text" xml:space="preserve"><value>Texte</value></data>

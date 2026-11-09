@@ -26,6 +26,9 @@ public partial class LogsPage
 
     private string Format(string key, params object[] values) => string.Format(CultureInfo.CurrentCulture, L[key], values);
 
+    /// <summary>The level as the reader says it; the enum name stays the value of the form and the links.</summary>
+    private string Severity(LogSeverity level) => L["Severity" + level].Value;
+
     /// <summary>The detail's id: unique over every page, so a link to it stays valid while the page changes.</summary>
     private string Anchor(int index) =>
         (Model.Query.Excluded ? "excluded-" : "entry-") + (Model.Offset + index + 1).ToString(CultureInfo.InvariantCulture);

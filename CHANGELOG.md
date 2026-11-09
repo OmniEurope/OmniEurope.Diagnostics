@@ -6,6 +6,8 @@ Notable changes to this project are documented here, following the Keep a Change
 
 ### Changed
 
+- Logs page: the level filter, the table and the detail show localized level names (French or English) instead of the
+  raw enum names; the form and link values stay the technical names.
 - Performance page: a 95th or 99th percentile that is the maximum itself (a route with fewer than 20 or 100 calls)
   is written in small print, and a note under the table says why.
 

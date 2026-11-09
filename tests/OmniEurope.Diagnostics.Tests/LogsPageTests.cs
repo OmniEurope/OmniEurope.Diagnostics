@@ -102,6 +102,27 @@ public sealed class LogsPageTests : IDisposable
         Assert.Empty(page.FindAll("[class], [style], style, link, script"));
     }
 
+    [Theory]
+    [InlineData("fr-FR", new[] { "Détail", "Débogage", "Information", "Avertissement", "Erreur", "Fatale" })]
+    [InlineData("en-GB", new[] { "Verbose", "Debug", "Information", "Warning", "Error", "Fatal" })]
+    public void EveryLevel_IsShownLocalized_InTheFilterTheTableAndTheDetail_WhileFormValuesStayTechnical(string culture, string[] labels)
+    {
+        CultureInfo.CurrentCulture = CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(culture);
+        var levels = Enum.GetValues<LogSeverity>();
+        var rows = levels.Select(level => new LogRow(new LogEntry(Clef.Noon, level, "m", null, null, null, null, null, []) { File = "app.json" }, null)).ToList();
+        _state.Journal = Journal(rows);
+
+        var page = _context.Render<LogsPage>();
+
+        var options = page.FindAll("select[name=level] option").Skip(1).ToList();
+        Assert.Equal(labels, options.Select(o => o.TextContent));
+        Assert.Equal(levels.Select(l => l.ToString()), options.Select(o => o.GetAttribute("value")));
+        Assert.Equal(labels, page.FindAll("tbody tr").Select(tr => tr.QuerySelectorAll("td")[1].TextContent.Trim()));
+        Assert.Equal(labels, page.FindAll("details dl dd").Where((_, i) => i % 3 == 1).Select(dd => dd.TextContent));
+        Assert.Equal(labels.Select(l => l), page.FindAll("details summary").Select(s => s.TextContent.Split(", ")[1]));
+        Assert.Empty(page.FindAll("[class], [style], style, link, script"));
+    }
+
     [Fact]
     public void TheRulesPage_ShowsEveryRuleState_AndCarriesTheTokenInEachForm()
     {
