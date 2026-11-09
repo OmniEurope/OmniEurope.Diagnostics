@@ -148,10 +148,15 @@ A missing folder setting or an out-of-range value is refused when the applicatio
 scopes' properties (ASP.NET Core adds `RequestId`, `RequestPath`...) at the top level. Logging only queues the line:
 one background task writes it, so a request never waits for the disk; a full queue or a failed write loses the
 entry, counts it and reports the count in one warning line once writing works again. Nothing is ever thrown into
-the application.
+the application. After a failed flush or close the count is an upper bound (the disk may already hold part of
+the lines counted), and lines still queued when shutdown stops waiting for the writer (five seconds) are neither
+written nor counted.
 
 Files are named `{FilePrefix}[-{Instance}]-yyyyMMdd.json` (UTC day), continued in `.1.json`, `.2.json`... above the
-size cap; two processes sharing a folder give themselves different `Instance` values. The `OmniLogs:File` section,
+size cap; two processes sharing a folder give themselves different `Instance` values. Retention treats every file
+named `{FilePrefix}-...-yyyyMMdd.json` as its own, so prefix `app` also deletes the old files of another
+application writing `app-web-...` to the same folder: give each application its own folder, or a prefix that is
+not another prefix followed by `-`. The `OmniLogs:File` section,
 then `AddOmniFileLogging(o => ...)`, which has the last word:
 
 | Setting | Default | Purpose |
@@ -160,7 +165,7 @@ then `AddOmniFileLogging(o => ...)`, which has the last word:
 | `FilePrefix` | `app` | The start of every file name: letters, digits, `-`, `_`, `.`, 64 at most. |
 | `Instance` | none | Added to the file name, cleaned to a host-name-like token. |
 | `MinLevel` | `Information` | The lowest level written. |
-| `RetentionDays` | `30` | Files of this prefix (every instance) older than that are deleted, at most once an hour; `0` never deletes. |
+| `RetentionDays` | `30` | Files of this prefix (every instance, and any prefix that continues it after a `-`) older than that are deleted, at most once an hour; `0` never deletes. |
 | `MaxFileBytes` | `104857600` (100 MiB) | Size above which the day continues in the next numbered file, 4 KiB to 1 GiB. |
 | `QueueCapacity` | `8192` | Entries waiting to be written, 16 to 1048576. |
 

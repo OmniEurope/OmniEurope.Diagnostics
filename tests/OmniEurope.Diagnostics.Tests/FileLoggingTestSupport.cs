@@ -70,6 +70,35 @@ internal static class FileLogs
             : new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
     }
 
+    /// <summary>An opener of real files that counts how many times their buffers are flushed.</summary>
+    internal sealed class FlushCounter
+    {
+        private int _flushes;
+
+        public int Flushes => Volatile.Read(ref _flushes);
+
+        public FileStream Open(string path) => new CountingFileStream(path, () => Interlocked.Increment(ref _flushes));
+    }
+
+    /// <summary>An opener whose first <paramref name="failures"/> openings throw, as a folder that is unwritable for a while; the next ones are real.</summary>
+    public static Func<string, FileStream> FirstOpeningsFail(int failures)
+    {
+        var opened = 0;
+        return path => Interlocked.Increment(ref opened) <= failures
+            ? throw new IOException("The file cannot be opened.")
+            : new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+    }
+
+    private sealed class CountingFileStream(string path, Action onFlush)
+        : FileStream(path, FileMode.Append, FileAccess.Write, FileShare.ReadWrite)
+    {
+        public override void Flush()
+        {
+            onFlush();
+            base.Flush();
+        }
+    }
+
     private sealed class FailingFileStream(string path, bool onFlush, bool onDispose)
         : FileStream(path, FileMode.Append, FileAccess.Write, FileShare.ReadWrite)
     {
