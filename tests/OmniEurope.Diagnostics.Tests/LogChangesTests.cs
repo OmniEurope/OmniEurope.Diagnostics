@@ -57,6 +57,19 @@ public sealed class LogChangesTests : IDisposable
         Assert.Equal(3, _raised);
     }
 
+    [Fact]
+    public void AThrowingHandler_IsIgnored_AndTheOtherHandlersStillRun()
+    {
+        var changes = Changes();
+        changes.Changed += (_, _) => throw new InvalidOperationException("subscriber failed");
+        changes.Changed += Count;
+
+        var exception = Record.Exception(() => changes.OnFileEvent("app.json"));
+
+        Assert.Null(exception);
+        Assert.Equal(1, _raised);
+    }
+
     [Theory]
     [InlineData("omni-log-rules.json", null, false)]
     [InlineData("omni-log-rules.json.0a1b.tmp", null, false)]

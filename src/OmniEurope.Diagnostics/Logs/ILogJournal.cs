@@ -7,6 +7,10 @@ namespace OmniEurope.Diagnostics.Logs;
 /// <see cref="ILogRuleStore"/> works): resolve it from a request or from a scope you create. Only the files directly
 /// in <see cref="LogsOptions.Directory"/> that match <see cref="LogsOptions.FilePattern"/> are listed, read, opened
 /// and purged, never the rules file nor a sub-folder.
+/// <para>
+/// The methods are named <c>*Async</c> but do their file I/O synchronously on the calling thread: a host that must
+/// not block calls them from a background task.
+/// </para>
 /// </summary>
 public interface ILogJournal
 {

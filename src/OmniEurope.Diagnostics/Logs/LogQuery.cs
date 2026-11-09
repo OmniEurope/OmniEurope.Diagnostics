@@ -77,13 +77,6 @@ internal sealed record LogQuery
     private static string? Local(DateTimeOffset? date) =>
         date?.ToString(date.Value.Ticks % TimeSpan.TicksPerMinute == 0 ? MinuteFormat : LocalFormat, CultureInfo.InvariantCulture);
 
-    /// <summary>Whether <paramref name="entry"/> passes the level, date and text filters.</summary>
-    public bool Accepts(LogEntry entry)
-    {
-        ArgumentNullException.ThrowIfNull(entry);
-        return ToSearch().Accepts(entry);
-    }
-
     /// <summary>The search of <see cref="ILogJournal"/> this query asks for: its file, filters and tab.</summary>
     public LogSearch ToSearch() => new()
     {

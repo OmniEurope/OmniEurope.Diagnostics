@@ -101,7 +101,15 @@ internal sealed class LogRuleStore(LogDirectory directory) : ILogRuleStore
     private static Task<T> Run<T>(Func<T> work, CancellationToken cancellationToken) => SyncTask.Run(work, cancellationToken);
 
     /// <summary>Adds a rule, enabled, numbered after the highest id.</summary>
-    public LogRuleUpdate Add(string pattern, string? category) =>
+    public LogRuleUpdate Add(string pattern, string? category)
+    {
+        ArgumentNullException.ThrowIfNull(pattern);
+        if (pattern.Length > LogRule.MaxLength || category?.Length > LogRule.MaxLength)
+            throw new ArgumentException($"The pattern and the category are at most {LogRule.MaxLength} characters.", nameof(pattern));
+        return AddRule(pattern, category);
+    }
+
+    private LogRuleUpdate AddRule(string pattern, string? category) =>
         Update((rules, next) =>
         {
             rules.Add(new LogRule(next, pattern, category, Enabled: true));

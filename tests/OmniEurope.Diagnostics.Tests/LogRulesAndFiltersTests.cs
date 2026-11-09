@@ -36,9 +36,9 @@ public sealed class LogRulesAndFiltersTests : IDisposable
         var query = Query(("level", "warning"));
 
         Assert.Equal(LogSeverity.Warning, query.MinLevel);
-        Assert.False(query.Accepts(Entry("a", LogSeverity.Information)));
-        Assert.True(query.Accepts(Entry("a", LogSeverity.Warning)));
-        Assert.True(query.Accepts(Entry("a", LogSeverity.Fatal)));
+        Assert.False(query.ToSearch().Accepts(Entry("a", LogSeverity.Information)));
+        Assert.True(query.ToSearch().Accepts(Entry("a", LogSeverity.Warning)));
+        Assert.True(query.ToSearch().Accepts(Entry("a", LogSeverity.Fatal)));
         Assert.Null(Query(("level", "Loud")).MinLevel);
     }
 
@@ -48,10 +48,10 @@ public sealed class LogRulesAndFiltersTests : IDisposable
         var query = Query(("from", "2026-11-08T12:00"), ("to", "2026-11-08T12:10:30"));
 
         Assert.Equal(("2026-11-08T12:00", "2026-11-08T12:10:30"), (query.From, query.To));
-        Assert.False(query.Accepts(Entry("a", minutes: -1)));
-        Assert.True(query.Accepts(Entry("a", minutes: 0)));
-        Assert.True(query.Accepts(Entry("a", minutes: 10)));
-        Assert.False(query.Accepts(Entry("a", minutes: 11)));
+        Assert.False(query.ToSearch().Accepts(Entry("a", minutes: -1)));
+        Assert.True(query.ToSearch().Accepts(Entry("a", minutes: 0)));
+        Assert.True(query.ToSearch().Accepts(Entry("a", minutes: 10)));
+        Assert.False(query.ToSearch().Accepts(Entry("a", minutes: 11)));
         Assert.Null(Query(("from", "tomorrow")).FromDate);
     }
 
@@ -66,8 +66,8 @@ public sealed class LogRulesAndFiltersTests : IDisposable
         var entry = Entry(field == "message" ? "a needle here" : "plain", category: field == "category" ? "Shop.Needle" : "Shop",
             exception: field == "exception" ? "NeedleException" : null, correlation: field == "correlation" ? "needle:4" : "0HN:1");
 
-        Assert.True(query.Accepts(entry));
-        Assert.False(query.Accepts(Entry("plain", category: "Shop", correlation: "0HN:1")));
+        Assert.True(query.ToSearch().Accepts(entry));
+        Assert.False(query.ToSearch().Accepts(Entry("plain", category: "Shop", correlation: "0HN:1")));
     }
 
     [Fact]
@@ -101,19 +101,34 @@ public sealed class LogRulesAndFiltersTests : IDisposable
     }
 
     [Fact]
-    public void TheSplit_SendsMatchedEntriesToTheExcludedTab_WithTheirRule_IgnoresDisabledRules_AndListsNewestFirst()
+    public void TheRows_SendMatchedEntriesToTheExcludedTab_WithTheirRule_IgnoresDisabledRules_AndListsNewestFirst()
     {
         LogEntry[] entries = [Entry("old noise", minutes: 1, sequence: 0), Entry("keep", minutes: 2, sequence: 1), Entry("new noise", minutes: 3, sequence: 2),
             Entry("same instant, first line", minutes: 4, sequence: 3), Entry("same instant, second line", minutes: 4, sequence: 4), Entry("disabled", minutes: 5)];
         LogRule[] rules = [new(1, "noise", null, Enabled: true), new(2, "disabled", null, Enabled: false)];
 
-        var (journal, excluded) = LogSelection.Split(entries, rules, new LogQuery());
+        var rows = LogSelection.Rows(entries, rules, new LogQuery().ToSearch());
+        var journal = rows.Where(row => row.Rule is null).ToList();
+        var excluded = rows.Where(row => row.Rule is not null).ToList();
 
         Assert.Equal(["disabled", "same instant, second line", "same instant, first line", "keep"], journal.Select(row => row.Entry.Message));
         Assert.Equal(["new noise", "old noise"], excluded.Select(row => row.Entry.Message));
         Assert.All(excluded, row => Assert.Equal(1, row.Rule!.Id));
         Assert.All(journal, row => Assert.Null(row.Rule));
-        Assert.Single(LogSelection.Split(entries, rules, Query(("q", "keep"))).Journal);
+        Assert.Single(LogSelection.Rows(entries, rules, Query(("q", "keep")).ToSearch()), row => row.Rule is null);
+    }
+
+    [Fact]
+    public async Task APatternOrCategoryLongerThanTheMaximum_IsRefused_AndNothingIsWritten()
+    {
+        var store = new LogRuleStore(Directory());
+        var tooLong = new string('a', LogRule.MaxLength + 1);
+
+        Assert.Throws<ArgumentException>(() => store.Add(tooLong, null));
+        Assert.Throws<ArgumentException>(() => store.Add("ok", tooLong));
+        await Assert.ThrowsAsync<ArgumentException>(() => ((ILogRuleStore)store).AddAsync(tooLong, null, TestContext.Current.CancellationToken));
+        Assert.Equal(LogRuleUpdate.Saved, store.Add(new string('a', LogRule.MaxLength), null));
+        Assert.Single(store.Load().Rules);
     }
 
     [Fact]

@@ -15,7 +15,7 @@ namespace OmniEurope.Diagnostics.Logs;
 /// while nobody watched.
 /// </para>
 /// The handlers run on a file-watcher or timer thread, never the subscriber's: a UI marshals to its own context, and
-/// a handler must not throw.
+/// an exception thrown by a handler is caught and ignored, and the other handlers still run.
 /// </summary>
 public interface ILogChanges
 {

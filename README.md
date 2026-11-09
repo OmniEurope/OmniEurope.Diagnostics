@@ -171,13 +171,14 @@ then `AddOmniFileLogging(o => ...)`, which has the last word:
 - **`ILogJournal`** (scoped): `ListFilesAsync`, `SearchAsync(LogSearch)` (file, minimum level, dates, text, journal
   or excluded tab; every matching entry newest first, within `MaxBytesRead`, with the tab counts, the rules, the
   truncation flag and the unreadable lines), `OpenFileAsync` (a shared read stream, null when the name is not a
-  listed file) and `PurgeAsync`. The caller pages and sorts the entries.
+  listed file) and `PurgeAsync`. The caller pages and sorts the entries. The `*Async` methods do their file I/O
+  synchronously on the calling thread; a host that must not block calls them from a background task.
 - **`ILogRuleStore`**: the exclusion rules (load, add, enable or disable, delete). The default keeps them in the
   rules file; a host that registers its own (a database, say), before or after `AddOmniLogs()`, gets it used by the
   pages and by the journal alike.
 - **`ILogChanges`**: a `Changed` event raised, at most every two seconds and once more at the end of a busy period,
   when a log file of the folder is created, written, renamed or deleted. The folder is watched only while someone
-  listens; a missing folder is looked for again every ten seconds. Handlers must not throw.
+  listens; a missing folder is looked for again every ten seconds. An exception thrown by a handler is caught and ignored; the other handlers still run.
 
 ## Dependencies
 

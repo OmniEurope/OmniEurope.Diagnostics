@@ -1,26 +1,9 @@
 // SPDX-License-Identifier: EUPL-1.2
 namespace OmniEurope.Diagnostics.Logs;
 
-/// <summary>Splits read entries between the journal and the excluded tab, newest first.</summary>
+/// <summary>Selects read entries for the journal and the excluded tab, newest first.</summary>
 internal static class LogSelection
 {
-    /// <summary>
-    /// The entries <paramref name="query"/> accepts, newest first: those no enabled rule matches go to the journal,
-    /// the others to the excluded tab with the first rule that matches them.
-    /// </summary>
-    public static (List<LogRow> Journal, List<LogRow> Excluded) Split(IEnumerable<LogEntry> entries, IReadOnlyList<LogRule> rules, LogQuery query) =>
-        Split(entries, rules, query.ToSearch());
-
-    /// <summary>The same split for a <see cref="LogSearch"/>; its file and tab are not applied here.</summary>
-    public static (List<LogRow> Journal, List<LogRow> Excluded) Split(IEnumerable<LogEntry> entries, IReadOnlyList<LogRule> rules, LogSearch search)
-    {
-        var journal = new List<LogRow>();
-        var excluded = new List<LogRow>();
-        foreach (var row in Rows(entries, rules, search))
-            (row.Rule is null ? journal : excluded).Add(row);
-        return (journal, excluded);
-    }
-
     /// <summary>The entries <paramref name="search"/> accepts, newest first, each with the first enabled rule that
     /// matches it, or none.</summary>
     public static List<LogRow> Rows(IEnumerable<LogEntry> entries, IReadOnlyList<LogRule> rules, LogSearch search)

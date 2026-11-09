@@ -14,9 +14,9 @@ public interface ILogRuleStore
     /// <param name="cancellationToken">Cancels the read.</param>
     Task<LogRuleSet> LoadAsync(CancellationToken cancellationToken = default);
 
-    /// <summary>Adds an enabled rule, numbered with an id never used before.</summary>
+    /// <summary>Adds an enabled rule, numbered with an id never used before. The default store throws an <see cref="ArgumentException"/> for a pattern or category longer than <see cref="LogRule.MaxLength"/>.</summary>
     /// <param name="pattern">The text the message contains, at most <see cref="LogRule.MaxLength"/> characters.</param>
-    /// <param name="category">The only category it applies to, or null for every category.</param>
+    /// <param name="category">The only category it applies to, or null for every category. At most <see cref="LogRule.MaxLength"/> characters.</param>
     /// <param name="cancellationToken">Cancels the change.</param>
     Task<LogRuleUpdate> AddAsync(string pattern, string? category, CancellationToken cancellationToken = default);
 

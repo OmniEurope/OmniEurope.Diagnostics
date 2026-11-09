@@ -162,7 +162,19 @@ internal sealed class LogChangeWatcher : ILogChanges, IDisposable
         EventHandler? handlers;
         lock (_gate)
             handlers = _changed;
-        handlers?.Invoke(this, EventArgs.Empty);
+        if (handlers is null)
+            return;
+        foreach (var handler in handlers.GetInvocationList().Cast<EventHandler>())
+        {
+            try
+            {
+                handler(this, EventArgs.Empty);
+            }
+            catch (Exception)
+            {
+                // A failing subscriber must neither stop the host (this runs on a watcher or timer thread) nor starve the others.
+            }
+        }
     }
 
     private bool TryStartLocked()
