@@ -12,11 +12,12 @@ internal static class FileLogs
 
     /// <summary>A provider writing to <paramref name="directory"/>, its drain held until <paramref name="gate"/> completes.</summary>
     public static FileLoggerProvider Provider(
-        string directory, Action<FileLoggingOptions>? configure = null, TimeProvider? time = null, Task? gate = null)
+        string directory, Action<FileLoggingOptions>? configure = null, TimeProvider? time = null, Task? gate = null,
+        Func<string, FileStream>? openFile = null)
     {
         var options = new FileLoggingOptions { Directory = directory };
         configure?.Invoke(options);
-        return new FileLoggerProvider(options, directory, time ?? new FixedTime(Noon), gate ?? Task.CompletedTask);
+        return new FileLoggerProvider(options, directory, time ?? new FixedTime(Noon), gate ?? Task.CompletedTask, openFile);
     }
 
     /// <summary>Logs through a fresh provider, disposes it (which flushes) and returns the lines of its only file.</summary>
@@ -54,6 +55,36 @@ internal static class FileLogs
         {
             Assert.True(DateTime.UtcNow < deadline, "The writer did not reach the expected state in time.");
             await Task.Delay(10, TestContext.Current.CancellationToken);
+        }
+    }
+
+    /// <summary>
+    /// An opener whose first file fails on flush or on dispose, as a disk that refuses the buffered lines would;
+    /// the files opened after it are real.
+    /// </summary>
+    public static Func<string, FileStream> FirstFileFails(bool onFlush, bool onDispose)
+    {
+        var opened = 0;
+        return path => Interlocked.Increment(ref opened) == 1
+            ? new FailingFileStream(path, onFlush, onDispose)
+            : new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+    }
+
+    private sealed class FailingFileStream(string path, bool onFlush, bool onDispose)
+        : FileStream(path, FileMode.Append, FileAccess.Write, FileShare.ReadWrite)
+    {
+        public override void Flush()
+        {
+            if (onFlush)
+                throw new IOException("The disk refused the flush.");
+            base.Flush();
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            base.Dispose(disposing);
+            if (disposing && onDispose)
+                throw new IOException("The disk refused the final flush.");
         }
     }
 }

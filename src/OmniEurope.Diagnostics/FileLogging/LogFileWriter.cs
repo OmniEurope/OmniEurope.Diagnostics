@@ -30,15 +30,19 @@ internal sealed class LogFileWriter : IDisposable
     private readonly int _retentionDays;
     private readonly TimeProvider _time;
     private readonly Task _drain;
+    private readonly Func<string, FileStream> _openFile;
     private long _dropped;
     private int _disposed;
     private FileStream? _stream;
+    private int _unflushed;
     private DateOnly _day;
     private int _index;
     private DateTimeOffset? _lastRetention;
 
-    public LogFileWriter(string directory, LogFileNames names, FileLoggingOptions options, TimeProvider time, Task drainGate)
+    // openFile is the tests' seam: it opens the file to append to, so a test can hand over a stream that fails on flush or dispose.
+    public LogFileWriter(string directory, LogFileNames names, FileLoggingOptions options, TimeProvider time, Task drainGate, Func<string, FileStream>? openFile = null)
     {
+        _openFile = openFile ?? OpenAppend;
         _directory = directory;
         _names = names;
         _maxFileBytes = options.MaxFileBytes;
@@ -92,6 +96,12 @@ internal sealed class LogFileWriter : IDisposable
         finally
         {
             CloseFile();
+            // A loss counted by this very close is reported now, or never: no drain pass follows.
+            if (Volatile.Read(ref _dropped) > 0)
+            {
+                ReportDropped();
+                CloseFile();
+            }
         }
     }
 
@@ -116,6 +126,7 @@ internal sealed class LogFileWriter : IDisposable
         {
             var bytes = Utf8.GetBytes(line.Json + "\n");
             StreamFor(DateOnly.FromDateTime(line.Timestamp.UtcDateTime), bytes.Length).Write(bytes);
+            _unflushed++;
             return true;
         }
         catch (Exception)
@@ -140,26 +151,29 @@ internal sealed class LogFileWriter : IDisposable
         // A line never splits: a file that cannot take it whole is continued in the next one, unless it is empty.
         while (_stream.Length > 0 && _stream.Length + length > _maxFileBytes)
         {
-            _stream.Dispose();
+            CloseFile();
             _index++;
             _stream = Open();
         }
         return _stream;
     }
 
+    private FileStream Open() => _openFile(Path.Combine(_directory, _names.For(_day, _index)));
+
     // Shared for reading and writing, so the logs page reads the file while it is written.
-    private FileStream Open() =>
-        new(Path.Combine(_directory, _names.For(_day, _index)), FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+    private static FileStream OpenAppend(string path) => new(path, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
 
     private void TryFlush()
     {
         try
         {
             _stream?.Flush();
+            _unflushed = 0;
         }
         catch (Exception)
         {
-            // The buffered lines are lost with the file handle; the next line reopens the file.
+            // The buffered lines are lost with the file handle, and counted; the next line reopens the file.
+            CountUnflushedAsDropped();
             CloseFile();
         }
     }
@@ -169,12 +183,20 @@ internal sealed class LogFileWriter : IDisposable
         try
         {
             _stream?.Dispose();
+            _unflushed = 0;
         }
         catch (Exception)
         {
-            // Disposing flushes: a disk that refuses it loses those lines, never the application.
+            // Disposing flushes: a disk that refuses it loses those lines, counted, never the application.
+            CountUnflushedAsDropped();
         }
         _stream = null;
+    }
+
+    private void CountUnflushedAsDropped()
+    {
+        Interlocked.Add(ref _dropped, _unflushed);
+        _unflushed = 0;
     }
 
     private void ApplyRetention()

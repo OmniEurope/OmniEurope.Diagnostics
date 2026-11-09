@@ -28,12 +28,12 @@ internal sealed class FileLoggerProvider : ILoggerProvider, ISupportExternalScop
     }
 
     /// <summary>The tests' constructor: the drain starts once <paramref name="drainGate"/> completes.</summary>
-    internal FileLoggerProvider(FileLoggingOptions options, string contentRoot, TimeProvider time, Task drainGate)
+    internal FileLoggerProvider(FileLoggingOptions options, string contentRoot, TimeProvider time, Task drainGate, Func<string, FileStream>? openFile = null)
     {
         _time = time;
         _minLevel = options.MinLevel;
         var directory = Path.GetFullPath(Path.Combine(contentRoot, options.Directory));
-        _writer = new LogFileWriter(directory, new LogFileNames(options.FilePrefix, options.Instance), options, time, drainGate);
+        _writer = new LogFileWriter(directory, new LogFileNames(options.FilePrefix, options.Instance), options, time, drainGate, openFile);
     }
 
     /// <inheritdoc />
