@@ -1,4 +1,4 @@
-# ylaunch-core 1.0.5
+# ylaunch-core 1.0.7
 #
 # Shared launcher core. Everything project-specific lives in the repository's own ylaunch.ps1 ($LaunchConfig) and in the
 # gitignored .ylaunch.local.
@@ -15,9 +15,13 @@
 # start no application skip the occupied-port check; a config with both Web and Maui starts the web
 # components first, then the desktop app, and stops them together.
 
+# 1.0.6: MSBuild node reuse is off for the whole run (MSBUILDDISABLENODEREUSE=1, the caller's value put back
+# on return). A reused node may belong to another session, possibly sandboxed without write access to this
+# checkout, and every build of the run then failed with "Access to the path ... is denied".
+
 Set-StrictMode -Off
 
-$script:YLaunchCoreVersion = '1.0.5'
+$script:YLaunchCoreVersion = '1.0.6'
 $script:YLaunchExitCode = 0
 # Components started by this run, so an unexpected error still stops them instead of orphaning them.
 $script:YActiveJobs = $null
@@ -380,10 +384,56 @@ function Show-YVersionGuard([string]$Root, [string]$Solution) {
         Write-Host "  SDK $resolved (floor $floor, release index unreachable)." -ForegroundColor DarkGray
     }
     if ($Solution -and (Test-Path -LiteralPath $Solution)) {
-        $outdated = & dotnet list $Solution package --outdated 2>$null
-        $count = @($outdated | Where-Object { $_ -match '^\s*>\s' }).Count
-        if ($count -gt 0) {
-            Write-Host "  [guard] $count NuGet package reference(s) outdated (dotnet list package --outdated)." -ForegroundColor Yellow
+        $outdated = & dotnet list $Solution package --outdated --format json 2>$null
+        $scope = ''
+        if ($LASTEXITCODE -ne 0) {
+            # This command ignores packageSourceMapping and asks every feed for every package, and a private
+            # feed answers 401 for a package it does not hold: the public feed alone still gives the answer.
+            $outdated = & dotnet list $Solution package --outdated --source https://api.nuget.org/v3/index.json --format json 2>$null
+            $scope = ', nuget.org only'
+        }
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "  [guard] NuGet update check failed: package freshness could not be verified." -ForegroundColor Yellow
+            return
+        }
+        try {
+            $report = ($outdated -join "`n") | ConvertFrom-Json -ErrorAction Stop
+            if (-not $report -or -not $report.PSObject.Properties['projects']) {
+                throw 'NuGet JSON contains no projects collection.'
+            }
+            # Only the three compiler packages qualify, at the floor's exact pin.
+            $floorVersion = [version]$floor
+            $band = '{0}.{1}.{2}' -f $floorVersion.Major, $floorVersion.Minor, [math]::Floor($floorVersion.Build / 100)
+            $roslynPins = @{ '9.0.1' = '4.12.0'; '10.0.1' = '5.0.0'; '10.0.2' = '5.3.0'; '10.0.3' = '5.6.0'; '10.0.4' = '5.9.0' }
+            $compilerPackages = @('Microsoft.CodeAnalysis.CSharp', 'Microsoft.CodeAnalysis.CSharp.Workspaces', 'Microsoft.CodeAnalysis.Workspaces.Common')
+            $count = 0
+            $pinned = 0
+            foreach ($project in @($report.projects)) {
+                if (-not $project.PSObject.Properties['frameworks']) { continue }
+                foreach ($framework in @($project.frameworks)) {
+                    if (-not $framework.PSObject.Properties['topLevelPackages']) { continue }
+                    foreach ($package in @($framework.topLevelPackages)) {
+                        if (-not $package -or -not $package.PSObject.Properties['id'] -or -not $package.PSObject.Properties['resolvedVersion']) {
+                            throw 'NuGet JSON contains an incomplete package reference.'
+                        }
+                        # A package of a private feed, in the nuget.org only check: no version to compare it with.
+                        if ($package.PSObject.Properties['latestVersion'] -and $package.latestVersion -notmatch '^\d') { continue }
+                        if ($roslynPins.ContainsKey($band) -and $package.id -in $compilerPackages -and $package.resolvedVersion -eq $roslynPins[$band]) {
+                            $pinned++
+                        } else {
+                            $count++
+                        }
+                    }
+                }
+            }
+            if ($count -gt 0) {
+                Write-Host "  [guard] $count NuGet package reference(s) outdated (dotnet list package --outdated$scope)." -ForegroundColor Yellow
+            }
+            if ($pinned -gt 0) {
+                Write-Host "  [guard] $pinned Roslyn package reference(s) deliberately held at $($roslynPins[$band]) for SDK floor $floor." -ForegroundColor DarkGray
+            }
+        } catch {
+            Write-Host "  [guard] NuGet update check unreadable: package freshness could not be verified ($($_.Exception.Message))." -ForegroundColor Yellow
         }
     }
 }
@@ -1268,6 +1318,9 @@ function Invoke-YLaunchCore([hashtable]$Config, [string]$Root, [hashtable]$Optio
 # Entry point called by the root ylaunch.ps1. Sets $script:YLaunchExitCode; never exits itself.
 function Invoke-YLaunch([hashtable]$Config, [string]$Root, [hashtable]$Options) {
     $ErrorActionPreference = 'Stop'
+    # Every build of the run starts its own MSBuild nodes and leaves none behind (1.0.6).
+    $previousNodeReuse = $env:MSBUILDDISABLENODEREUSE
+    $env:MSBUILDDISABLENODEREUSE = '1'
     try {
         if (Get-YOption $Options 'Help') { Show-YHelp $Config; return }
         if (Get-YOption $Options 'HelpLong') { Show-YHelp $Config -Long; return }
@@ -1275,5 +1328,7 @@ function Invoke-YLaunch([hashtable]$Config, [string]$Root, [hashtable]$Options) 
     } catch {
         Write-YFail "ylaunch: $($_.Exception.Message)"
         if ($script:YActiveJobs) { Stop-YWebComponents -Jobs $script:YActiveJobs -Config $Config -Root $Root -DumpLogs $true }
+    } finally {
+        $env:MSBUILDDISABLENODEREUSE = $previousNodeReuse
     }
 }
