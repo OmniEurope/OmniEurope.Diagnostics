@@ -13,6 +13,8 @@ Notable changes to this project are documented here, following the Keep a Change
 
 - Logs page: an entry that starts exactly where the read budget (`MaxBytesRead`) begins is kept; it was dropped as a
   partial line (a 4096-byte last entry vanished with a budget of 4096 and came back with 4097).
+- File logger: lines accepted into the file buffer and lost when the flush or the close of the file fails are counted
+  in the dropped-entries warning, like a failed write, instead of vanishing without a trace.
 
 ## [1.1.0] - 2026-11-08
 

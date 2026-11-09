@@ -143,6 +143,43 @@ public sealed class FileLoggingFileTests : IDisposable
     }
 
     [Fact]
+    public void LinesLostByAFailedFlush_AreCounted_AndReportedByTheWarning()
+    {
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using (var provider = FileLogs.Provider(_folder.Path, gate: gate.Task, openFile: FileLogs.FirstFileFails(onFlush: true, onDispose: false)))
+        {
+            var logger = provider.CreateLogger("Cat");
+            for (var i = 0; i < 3; i++)
+                logger.LogInformation("Entry {Number}", i);
+            gate.SetResult();
+        }
+
+        var warning = Assert.Single(FileLogs.Entries(_folder.File("app-20261108.json")), entry => entry.Text("SourceContext") == LogFileWriter.SourceContext);
+        Assert.Equal(("Warning", "3"), (warning.Text("@l"), warning.Text("DroppedCount")));
+    }
+
+    [Fact]
+    public void LinesLostByAFailedDispose_AreCounted_AndReportedByTheWarning()
+    {
+        var clock = new ManualClock(FileLogs.Noon);
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using (var provider = FileLogs.Provider(_folder.Path, time: clock, gate: gate.Task, openFile: FileLogs.FirstFileFails(onFlush: false, onDispose: true)))
+        {
+            var logger = provider.CreateLogger("Cat");
+            logger.LogInformation("first day {Number}", 1);
+            logger.LogInformation("first day {Number}", 2);
+            clock.Advance(TimeSpan.FromHours(13));
+            logger.LogInformation("second day {Number}", 3);
+            gate.SetResult();
+        }
+
+        // The first day's file is closed when the second day's first line arrives: its close fails, its two lines are lost.
+        var entries = FileLogs.Entries(_folder.File("app-20261109.json"));
+        Assert.Equal(["second day 3", "2 log entries were dropped: the write queue was full or the log file could not be written."], entries.Select(entry => entry.Text("@m")));
+        Assert.Equal("2", entries[^1].Text("DroppedCount"));
+    }
+
+    [Fact]
     public void Dispose_FlushesEveryQueuedEntry_IsIdempotent_AndLaterEntriesAreIgnored()
     {
         var provider = FileLogs.Provider(_folder.Path);
