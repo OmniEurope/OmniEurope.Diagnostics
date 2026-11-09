@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: EUPL-1.2 -->
 # PLAN-002 - File logging and a public log reader
 
-Status: done (implemented on develop, version 1.1.0, 2026-11-08). Target version: 1.1.0 (also ships the `[Unreleased]` fixes).
+Status: done (implemented on develop, version 1.0.1, 2026-11-09). Target version: 1.0.1 (also ships the `[Unreleased]` fixes).
 
 ## Why
 
@@ -36,4 +36,4 @@ without a log writer has nothing to show. The package therefore offers both side
 - A host calling `builder.Logging.AddOmniFileLogging(...)`, `AddOmniLogs()` and `MapOmniLogs()` sees an error it
   logged on the page (real host, real browser).
 - A test host replaces `ILogRuleStore` and the page and the journal apply its rules.
-- `ylaunch.ps1 -c` passes (tests, coverage floors, CRAP gate), README and CHANGELOG describe the new API, version 1.1.0.
+- `ylaunch.ps1 -c` passes (tests, coverage floors, CRAP gate), README and CHANGELOG describe the new API, version 1.0.1.
