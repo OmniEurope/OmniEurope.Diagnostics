@@ -198,24 +198,15 @@ public sealed class LogJournalTests : IDisposable
     }
 
     [Fact]
-    public async Task AFileLockedWithoutSharing_FaultsTheOpeningOnWindows()
+    public async Task AFileLockedWithoutSharing_FaultsTheOpening()
     {
         _folder.Write("locked.json", [Clef.Line(Clef.Noon, "x")]);
         var journal = Journal();
         using var exclusive = new FileStream(_folder.File("locked.json"), FileMode.Open, FileAccess.ReadWrite, FileShare.None);
 
-        var opening = journal.OpenFileAsync("locked.json", Ct);
-
-        // Windows refuses to share a file opened without sharing; POSIX has no mandatory lock, so it opens.
-        if (OperatingSystem.IsWindows())
-        {
-            await Assert.ThrowsAsync<IOException>(() => opening);
-        }
-        else
-        {
-            await using var stream = await opening;
-            Assert.NotNull(stream);
-        }
+        // Windows refuses to share a file opened without sharing; on Unix .NET emulates FileShare.None with an
+        // advisory lock that its own openings honour, so the opening faults on every platform.
+        await Assert.ThrowsAsync<IOException>(() => journal.OpenFileAsync("locked.json", Ct));
     }
 
     [Fact]
