@@ -4,6 +4,11 @@ Notable changes to this project are documented here, following the Keep a Change
 
 ## [Unreleased]
 
+### Changed
+
+- Performance page: a 95th or 99th percentile that is the maximum itself (a route with fewer than 20 or 100 calls)
+  is written in small print, and a note under the table says why.
+
 ## [1.1.0] - 2026-11-08
 
 ### Added

@@ -79,13 +79,31 @@
                                 <td><code>@route.Route</code></td>
                                 <td>@route.Count.ToString("N0", CultureInfo.CurrentCulture)</td>
                                 <td>@PerformanceFormat.Milliseconds(route.P50Ms)</td>
-                                <td>@PerformanceFormat.Milliseconds(route.P95Ms)</td>
-                                <td>@PerformanceFormat.Milliseconds(route.P99Ms)</td>
+                                @if (route.Count < P95DistinctFromMaxCalls)
+                                {
+                                    <td><small>@PerformanceFormat.Milliseconds(route.P95Ms)</small></td>
+                                }
+                                else
+                                {
+                                    <td>@PerformanceFormat.Milliseconds(route.P95Ms)</td>
+                                }
+                                @if (route.Count < P99DistinctFromMaxCalls)
+                                {
+                                    <td><small>@PerformanceFormat.Milliseconds(route.P99Ms)</small></td>
+                                }
+                                else
+                                {
+                                    <td>@PerformanceFormat.Milliseconds(route.P99Ms)</td>
+                                }
                                 <td>@PerformanceFormat.Milliseconds(route.MaxMs)</td>
                             </tr>
                         }
                     </tbody>
                 </table>
+                @if (AnyPercentileRepeatsMax)
+                {
+                    <p><small>@L["FewCalls"]</small></p>
+                }
             </section>
         }
     </main>

@@ -15,10 +15,11 @@ describes a piece of work, not the state of the product.
 
 | Plan | Subject |
 |---|---|
-| [PLAN-002](PLAN-002-file-logging-and-public-log-reader.md) | File logging and a public log reader (1.1.0) |
+| None | |
 
 ## Archived plans
 
 | Plan | Outcome | ADR |
 |---|---|---|
 | [PLAN-001](archive/PLAN-001-initial-scope.md) | Initial scope delivered, 0.1.0 published on NuGet | None |
+| [PLAN-002](archive/PLAN-002-file-logging-and-public-log-reader.md) | File writer, public log reader, rule store and change signal delivered as 1.1.0 | None |

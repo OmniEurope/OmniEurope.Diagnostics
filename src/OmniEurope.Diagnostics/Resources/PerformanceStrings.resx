@@ -22,4 +22,5 @@
   <data name="P95" xml:space="preserve"><value>95e centile</value></data>
   <data name="P99" xml:space="preserve"><value>99e centile</value></data>
   <data name="Max" xml:space="preserve"><value>Maximum</value></data>
+  <data name="FewCalls" xml:space="preserve"><value>En petit : un centile égal au maximum, car la route compte trop peu d'appels pour les distinguer (moins de 20 pour le 95e, moins de 100 pour le 99e).</value></data>
 </root>

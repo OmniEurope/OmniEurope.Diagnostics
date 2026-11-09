@@ -86,6 +86,44 @@ public sealed class PerformancePageTests : IDisposable
     }
 
     [Theory]
+    [InlineData(19, true, true)]
+    [InlineData(20, false, true)]
+    [InlineData(99, false, true)]
+    [InlineData(100, false, false)]
+    public void APercentileThatIsTheMaximumItself_IsWrittenInSmallPrint_AndExplained(int calls, bool p95Small, bool p99Small)
+    {
+        UseCulture("fr-FR");
+        var recorder = UseRecorder(new PerformanceOptions());
+        for (var i = 1; i <= calls; i++) recorder.Record("orders", "GET", 200, i);
+
+        var page = _context.Render<PerformancePage>();
+
+        var cells = page.FindAll("table")[1].QuerySelectorAll("tbody td").ToArray();
+        Assert.Equal(p95Small, cells[4].QuerySelector("small") is not null);
+        Assert.Equal(p99Small, cells[5].QuerySelector("small") is not null);
+        Assert.Null(cells[3].QuerySelector("small"));
+        Assert.Null(cells[6].QuerySelector("small"));
+        Assert.Equal(p99Small, page.Markup.Contains("En petit : un centile égal au maximum", StringComparison.Ordinal));
+        if (p95Small) Assert.Equal(cells[6].TextContent, cells[4].TextContent);
+        else Assert.NotEqual(cells[6].TextContent, cells[4].TextContent);
+        if (p99Small) Assert.Equal(cells[6].TextContent, cells[5].TextContent);
+        else Assert.NotEqual(cells[6].TextContent, cells[5].TextContent);
+        Assert.Empty(page.FindAll("[class], [style], style, link, script"));
+    }
+
+    [Fact]
+    public void TheSmallPrintNote_IsTranslated()
+    {
+        UseCulture("en-GB");
+        var recorder = UseRecorder(new PerformanceOptions());
+        recorder.Record("orders", "GET", 200, 10);
+
+        var page = _context.Render<PerformancePage>();
+
+        Assert.Contains("In small print: a percentile equal to the maximum", page.Markup, StringComparison.Ordinal);
+    }
+
+    [Theory]
     [InlineData("en-GB", "en", "Site performance")]
     [InlineData("fr-BE", "fr", "Performances du site")]
     [InlineData("de-DE", "fr", "Performances du site")]
