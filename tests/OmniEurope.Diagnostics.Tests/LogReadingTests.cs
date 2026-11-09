@@ -242,6 +242,35 @@ public sealed class LogReadingTests : IDisposable
     }
 
     [Fact]
+    public void ACapStartingExactlyOnALineBoundary_KeepsThatLine_AndOneByteLessDropsItAsAFragment()
+    {
+        // The last entry is exactly 4096 bytes with its end of line.
+        var bare = Encoding.UTF8.GetByteCount(Clef.Line(Clef.Noon.AddSeconds(1), "last"));
+        var lastMessage = "last" + new string('x', 4096 - bare - 1);
+        var last = Clef.Line(Clef.Noon.AddSeconds(1), lastMessage);
+        Assert.Equal(4096, Encoding.UTF8.GetByteCount(last) + 1);
+        var path = _folder.Write("boundary.json", [Clef.Line(Clef.Noon, "older"), last]);
+        var fileBytes = new FileInfo(path).Length;
+
+        (long Budget, string[] Messages, bool Truncated)[] expected =
+        [
+            (4095, [], true),
+            (4096, [lastMessage], true),
+            (4097, [lastMessage], true),
+            (fileBytes - 1, [lastMessage], true),
+            (fileBytes, ["older", lastMessage], false),
+        ];
+        foreach (var (budget, messages, truncated) in expected)
+        {
+            var read = LogFileReader.Read([new FileInfo(path)], budget, Ct);
+
+            Assert.True(messages.SequenceEqual(read.Entries.Select(e => e.Message)), $"budget {budget}: read {read.Entries.Count} entries");
+            Assert.Equal(truncated, read.Truncated);
+            Assert.Empty(read.Issues);
+        }
+    }
+
+    [Fact]
     public void ACapSmallerThanOneLine_ReadsNothing_AndSaysItWasCut()
     {
         var path = _folder.File("one.json");

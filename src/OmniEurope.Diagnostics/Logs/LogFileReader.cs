@@ -94,14 +94,17 @@ internal static class LogFileReader
             var length = stream.Length;
             var take = (int)Math.Min(length, budget);
             var fromEnd = length > take;
+            var startsOnLine = true;
             if (fromEnd)
             {
-                stream.Seek(length - take, SeekOrigin.Begin);
+                // The byte just before the window tells whether it starts a line or cuts into one.
+                stream.Seek(length - take - 1, SeekOrigin.Begin);
+                startsOnLine = stream.ReadByte() == '\n';
                 result.Truncated = true;
             }
             var buffer = new byte[take];
             var read = stream.ReadAtLeast(buffer, take, throwOnEndOfStream: false);
-            ParseLines(buffer.AsMemory(0, read), fromEnd, file.Name, result, cancellationToken);
+            ParseLines(buffer.AsMemory(0, read), fromEnd, startsOnLine, file.Name, result, cancellationToken);
             return read;
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
@@ -112,12 +115,12 @@ internal static class LogFileReader
         }
     }
 
-    private static void ParseLines(ReadOnlyMemory<byte> text, bool fromEnd, string file, LogReadResult result, CancellationToken cancellationToken)
+    private static void ParseLines(ReadOnlyMemory<byte> text, bool fromEnd, bool startsOnLine, string file, LogReadResult result, CancellationToken cancellationToken)
     {
         var issue = new IssueBuilder(file);
         var lineNumber = 0;
         var start = SkipBom(text.Span);
-        if (fromEnd)
+        if (fromEnd && !startsOnLine)
         {
             // The budget cut into a line: what precedes the first end of line is a fragment.
             var first = text.Span.IndexOf((byte)'\n');
