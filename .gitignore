@@ -11,3 +11,6 @@ coverage/
 *.snupkg
 
 .ylaunch.local
+
+# Local rule-checker settings, not part of the published repository
+/.config/verify-rules.json

@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: EUPL-1.2 -->
 # PLAN-002 - File logging and a public log reader
 
-Status: done (delivered on develop as 1.1.0, 2026-11-08). Target version: 1.1.0 (also ships the `[Unreleased]` fixes).
+Status: done (implemented on develop, version 1.1.0, 2026-11-08). Target version: 1.1.0 (also ships the `[Unreleased]` fixes).
 
 ## Why
 

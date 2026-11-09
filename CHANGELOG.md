@@ -4,20 +4,6 @@ Notable changes to this project are documented here, following the Keep a Change
 
 ## [Unreleased]
 
-### Changed
-
-- Logs page: the level filter, the table and the detail show localized level names (French or English) instead of the
-  raw enum names; the form and link values stay the technical names.
-- Performance page: a 95th or 99th percentile that is the maximum itself (a route with fewer than 20 or 100 calls)
-  is written in small print, and a note under the table says why.
-
-### Fixed
-
-- Logs page: an entry that starts exactly where the read budget (`MaxBytesRead`) begins is kept; it was dropped as a
-  partial line (a 4096-byte last entry vanished with a budget of 4096 and came back with 4097).
-- File logger: lines accepted into the file buffer and lost when the flush or the close of the file fails are counted
-  in the dropped-entries warning, like a failed write, instead of vanishing without a trace.
-
 ## [1.1.0] - 2026-11-08
 
 ### Added
@@ -39,6 +25,10 @@ Notable changes to this project are documented here, following the Keep a Change
 - Logs page: the levels `Trace` and `Critical` read as Verbose and Fatal instead of Information; a `JsonFormatter`
   line without a `Properties` object shows its other top-level fields as properties.
 - Logs page: the pages read through `ILogJournal` and `ILogRuleStore`; reading stops when the request is aborted.
+- Logs page: the level filter, the table and the detail show localized level names (French or English) instead of the
+  raw enum names; the form and link values stay the technical names.
+- Performance page: a 95th or 99th percentile that is the maximum itself (a route with fewer than 20 or 100 calls)
+  is written in small print, and a note under the table says why.
 
 ### Fixed
 
@@ -49,6 +39,16 @@ Notable changes to this project are documented here, following the Keep a Change
 - Logs page: a file deleted by the sink's retention between the listing and the download answers 404 instead of 500.
 - Logs page: a requested file name matches the exact name first, so `App.json` and `app.json` on a case-sensitive
   file system are not mixed up.
+- Logs page: an entry that starts exactly where the read budget (`MaxBytesRead`) begins is kept; it was dropped as a
+  partial line (a 4096-byte last entry vanished with a budget of 4096 and came back with 4097).
+- File logger: lines accepted into the file buffer and lost when the flush or the close of the file fails are counted
+  in the dropped-entries warning, like a failed write, instead of vanishing without a trace.
+- File logger: the background writer flushes, reports drops and applies retention every 1024 lines, so a queue that
+  never empties no longer delays them until a lull.
+- Change signal: a handler of `ILogChanges.Changed` that throws is ignored; the other handlers still run and the
+  host process no longer stops on an unhandled exception from a watcher or timer thread.
+- Rule store: the default `ILogRuleStore` refuses a pattern or a category longer than `LogRule.MaxLength` with an
+  `ArgumentException`, as its documentation says, instead of saving it.
 
 ## [1.0.0] - 2026-11-08
 

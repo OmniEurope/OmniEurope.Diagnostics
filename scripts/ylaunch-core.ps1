@@ -21,7 +21,7 @@
 
 Set-StrictMode -Off
 
-$script:YLaunchCoreVersion = '1.0.6'
+$script:YLaunchCoreVersion = '1.0.7'
 $script:YLaunchExitCode = 0
 # Components started by this run, so an unexpected error still stops them instead of orphaning them.
 $script:YActiveJobs = $null

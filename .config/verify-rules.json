@@ -1,9 +1,0 @@
-{
-  "exclusions": [
-    {
-      "rule": "STD-SDKPIN",
-      "paths": [".github/dependabot.yml"],
-      "reason": "No Dependabot by maintainer decision (2026-11-08): dependencies are kept on their latest stable version by hand, and ylaunch.ps1 reports outdated NuGet packages and the SDK floor on every run. The global.json SDK pin stays checked."
-    }
-  ]
-}
