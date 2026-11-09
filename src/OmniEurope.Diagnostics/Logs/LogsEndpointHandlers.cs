@@ -39,7 +39,7 @@ internal sealed class LogsEndpointHandlers(string pattern)
         var found = await services.Journal.SearchAsync(query.ToSearch(), cancellationToken);
         var rows = found.Entries;
         if (query.Csv)
-            return TypedResults.File(LogsCsv.Write(rows), "text/csv; charset=utf-8", "logs.csv");
+            return TypedResults.Stream(body => LogsCsv.WriteAsync(rows, body, cancellationToken), "text/csv; charset=utf-8", "logs.csv");
 
         var pageSize = services.Options.PageSize;
         var pageCount = Math.Max(1, (rows.Count + pageSize - 1) / pageSize);

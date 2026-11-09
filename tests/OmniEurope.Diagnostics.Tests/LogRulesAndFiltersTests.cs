@@ -289,7 +289,7 @@ public sealed class LogRulesAndFiltersTests : IDisposable
     }
 
     [Fact]
-    public void TheCsv_QuotesEveryCell_DoublesQuotes_AndNeutralisesFormulas()
+    public async Task TheCsv_QuotesEveryCell_DoublesQuotes_AndNeutralisesFormulas()
     {
         Assert.Equal("\"\"", LogsCsv.Cell(null));
         Assert.Equal("\"say \"\"hi\"\", ok\"", LogsCsv.Cell("say \"hi\", ok"));
@@ -297,8 +297,11 @@ public sealed class LogRulesAndFiltersTests : IDisposable
             Assert.Equal("\"'" + formula + "\"", LogsCsv.Cell(formula));
         Assert.Equal("\"a=b\"", LogsCsv.Cell("a=b"));
 
-        var csv = Encoding.UTF8.GetString(LogsCsv.Write([new LogRow(Entry("=HYPERLINK(\"x\")") with { File = "a.json", Line = 3 }, new LogRule(1, "HYPER", null, true)),
-            new LogRow(Entry("plain"), null)]));
+        using var output = new MemoryStream();
+        await LogsCsv.WriteAsync([new LogRow(Entry("=HYPERLINK(\"x\")") with { File = "a.json", Line = 3 }, new LogRule(1, "HYPER", null, true)),
+            new LogRow(Entry("plain"), null)], output, TestContext.Current.CancellationToken);
+        Assert.True(output.CanWrite); // the response body stays the host's to close
+        var csv = Encoding.UTF8.GetString(output.ToArray());
         Assert.Equal(
             "\uFEFF\"Timestamp\",\"Level\",\"Category\",\"Message\",\"CorrelationId\",\"Exception\",\"File\",\"Line\",\"Rule\"\r\n"
             + "\"2026-11-08T12:00:00.0000000+00:00\",\"Information\",\"\",\"'=HYPERLINK(\"\"x\"\")\",\"\",\"\",\"a.json\",\"3\",\"HYPER\"\r\n"

@@ -145,9 +145,11 @@ public sealed class LogsEndpointTests : IDisposable
         await using var host = await LogsHost.StartAsync(_folder.Path, options => options.PageSize = 1);
 
         var response = await host.Client.GetAsync("/logs?format=csv&file=app-20261108.json", Ct);
-        var csv = await response.Content.ReadAsStringAsync(Ct);
+        var bytes = await response.Content.ReadAsByteArrayAsync(Ct);
+        var csv = Encoding.UTF8.GetString(bytes);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal([0xEF, 0xBB, 0xBF], bytes[..3]); // the byte order mark comes through the streamed body
         Assert.Equal("text/csv", response.Content.Headers.ContentType?.MediaType);
         Assert.Equal("logs.csv", response.Content.Headers.ContentDisposition?.FileName);
         var lines = csv.TrimEnd().Split("\r\n");
