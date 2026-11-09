@@ -180,6 +180,44 @@ public sealed class FileLoggingFileTests : IDisposable
     }
 
     [Fact]
+    public void ADropStillPendingAtShutdown_IsReportedByTheFinalClose()
+    {
+        // Four openings fail: the three lines are dropped by the pass (one opening each), and the pass's own warning
+        // cannot be written either (the fourth), so the count is still pending when the queue closes. The fifth
+        // opening, by the final close, succeeds: the warning is written there, or never.
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using (var provider = FileLogs.Provider(_folder.Path, gate: gate.Task, openFile: FileLogs.FirstOpeningsFail(failures: 4)))
+        {
+            var logger = provider.CreateLogger("Cat");
+            for (var i = 0; i < 3; i++)
+                logger.LogInformation("Entry {Number}", i);
+            gate.SetResult();
+        }
+
+        var warning = Assert.Single(FileLogs.Entries(_folder.File("app-20261108.json")));
+        Assert.Equal(("Warning", "3"), (warning.Text("@l"), warning.Text("DroppedCount")));
+    }
+
+    [Fact]
+    public void AQueueLongerThanOneBatch_IsFlushedBetweenBatches_NotOnlyWhenItIsEmpty()
+    {
+        var counter = new FileLogs.FlushCounter();
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var lines = (2 * LogFileWriter.MaxBatch) + 1;
+        using (var provider = FileLogs.Provider(_folder.Path, options => options.QueueCapacity = lines, gate: gate.Task, openFile: counter.Open))
+        {
+            var logger = provider.CreateLogger("Cat");
+            for (var i = 0; i < lines; i++)
+                logger.LogInformation("Entry {Number}", i);
+            gate.SetResult();
+        }
+
+        // Every line is queued before the drain starts: two full batches and a partial one make three passes, three flushes.
+        Assert.Equal(lines, FileLogs.Lines(_folder.File("app-20261108.json")).Length);
+        Assert.Equal(3, counter.Flushes);
+    }
+
+    [Fact]
     public void Dispose_FlushesEveryQueuedEntry_IsIdempotent_AndLaterEntriesAreIgnored()
     {
         var provider = FileLogs.Provider(_folder.Path);

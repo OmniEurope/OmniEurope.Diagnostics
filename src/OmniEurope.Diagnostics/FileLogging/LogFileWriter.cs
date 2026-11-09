@@ -13,11 +13,17 @@ internal readonly record struct QueuedLine(DateTimeOffset Timestamp, string Json
 /// next numbered file above the size cap, plus the hourly deletion of the old files. Enqueuing never blocks and a
 /// write failure never reaches the caller: what could not be queued or written is counted, then reported by one
 /// warning line once a write succeeds again.
+/// <para>The count after a failed flush or close is an upper bound: the stream may already have written part of the
+/// buffered lines it counts. Lines still queued when <see cref="Dispose"/> stops waiting (five seconds) are neither
+/// written nor counted.</para>
 /// </summary>
 internal sealed class LogFileWriter : IDisposable
 {
     /// <summary>The <c>SourceContext</c> of the warning that reports dropped entries.</summary>
     internal static readonly string SourceContext = typeof(FileLoggerProvider).FullName!;
+
+    /// <summary>The most lines written in one pass, so the report, the flush and the retention run under sustained load.</summary>
+    internal const int MaxBatch = 1024;
 
     private static readonly TimeSpan RetentionPeriod = TimeSpan.FromHours(1);
     private static readonly TimeSpan DisposeTimeout = TimeSpan.FromSeconds(5);
@@ -66,7 +72,10 @@ internal sealed class LogFileWriter : IDisposable
     /// <summary>Counts an entry that will never be written.</summary>
     public void CountDropped() => Interlocked.Increment(ref _dropped);
 
-    /// <summary>Closes the queue and waits, at most five seconds, for the queued lines to be written.</summary>
+    /// <summary>
+    /// Closes the queue and waits, at most five seconds, for the queued lines to be written; what is still queued
+    /// after that is neither written nor counted.
+    /// </summary>
     public void Dispose()
     {
         if (Interlocked.Exchange(ref _disposed, 1) == 1)
@@ -83,7 +92,8 @@ internal sealed class LogFileWriter : IDisposable
         {
             while (await reader.WaitToReadAsync().ConfigureAwait(false))
             {
-                while (reader.TryRead(out var line))
+                // A bounded batch, so a queue that never empties still gets its report, flush and retention.
+                for (var written = 0; written < MaxBatch && reader.TryRead(out var line); written++)
                 {
                     if (!TryWrite(line))
                         CountDropped();
@@ -96,7 +106,8 @@ internal sealed class LogFileWriter : IDisposable
         finally
         {
             CloseFile();
-            // A loss counted by this very close is reported now, or never: no drain pass follows.
+            // A count still pending (a warning that could not be written, a drop after the queue closed)
+            // is reported now, or never: no drain pass follows.
             if (Volatile.Read(ref _dropped) > 0)
             {
                 ReportDropped();

@@ -77,7 +77,10 @@ public sealed class FileLoggingOptions
     /// How many days of files are kept: <see cref="DefaultRetentionDays"/> by default, from 0 to
     /// <see cref="MaxRetentionDays"/>; 0 never deletes. A file whose day in its name is more than this many days
     /// before today (UTC) is deleted, at most once an hour while the logger writes. Only the files named after
-    /// <see cref="FilePrefix"/> as above are ever deleted, never another file of the folder.
+    /// <see cref="FilePrefix"/> as above are ever deleted, which includes the files of another application whose
+    /// prefix is this one followed by <c>-</c> (prefix <c>app</c> also matches <c>app-web-20261108.json</c>, read as
+    /// an instance named <c>web</c>). Give each application its own folder, or a prefix that is not another prefix
+    /// followed by <c>-</c>; files that do not follow the naming scheme are never deleted.
     /// </summary>
     public int RetentionDays { get; set; } = DefaultRetentionDays;
 
@@ -92,6 +95,9 @@ public sealed class FileLoggingOptions
     /// How many entries wait to be written: <see cref="DefaultQueueCapacity"/> by default, from
     /// <see cref="MinQueueCapacity"/> to <see cref="MaxQueueCapacity"/>. Logging never waits for the disk: when the
     /// queue is full, the entry is dropped and counted, and one warning written afterwards says how many were.
+    /// That count after a failed write is an upper bound (the disk may already hold part of the lines counted), and
+    /// entries still queued when the host stops waiting for the writer (five seconds at shutdown) are neither written
+    /// nor counted.
     /// </summary>
     public int QueueCapacity { get; set; } = DefaultQueueCapacity;
 }
