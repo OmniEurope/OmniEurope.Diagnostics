@@ -8,8 +8,10 @@ namespace OmniEurope.Diagnostics.Logs;
 /// in <see cref="LogsOptions.Directory"/> that match <see cref="LogsOptions.FilePattern"/> are listed, read, opened
 /// and purged, never the rules file nor a sub-folder.
 /// <para>
-/// The methods are named <c>*Async</c> but do their file I/O synchronously on the calling thread: a host that must
-/// not block calls them from a background task.
+/// <see cref="SearchAsync"/> reads the files with asynchronous streams and <see cref="OpenFileAsync"/> returns a stream
+/// opened for asynchronous reads. <see cref="ListFilesAsync"/>, the opening itself and <see cref="PurgeAsync"/> only
+/// touch file metadata (listing, opening, deleting), for which the system offers no asynchronous call: they run within
+/// the call, without reading any content.
 /// </para>
 /// </summary>
 public interface ILogJournal
@@ -82,12 +84,17 @@ public sealed record LogSearch
     /// <see cref="Excluded"/> is then ignored.</summary>
     public bool AllTabs { get; init; }
 
-    /// <summary>Whether <paramref name="entry"/> passes the level, date and text filters (not the file nor the tab).</summary>
+    /// <summary>The caller's own exclusions: an entry one of them matches is in neither tab nor count. Empty by default.</summary>
+    public IReadOnlyList<LogExclusion> Exclusions { get; init; } = [];
+
+    /// <summary>Whether <paramref name="entry"/> passes the level, date and text filters and no exclusion matches it
+    /// (not the file nor the tab).</summary>
     internal bool Accepts(LogEntry entry) =>
         (MinLevel is not { } level || entry.Level >= level)
         && (From is not { } from || entry.Timestamp >= from)
         && (To is not { } to || entry.Timestamp <= to)
-        && (Text is null || MatchesText(entry, Text));
+        && (Text is null || MatchesText(entry, Text))
+        && !Exclusions.Any(exclusion => exclusion is not null && exclusion.Matches(entry));
 
     private static bool MatchesText(LogEntry entry, string text) =>
         Contains(entry.Message, text) || Contains(entry.Category, text) || Contains(entry.Exception, text) || Contains(entry.CorrelationId, text);
@@ -118,4 +125,28 @@ public sealed record LogSearchResult
 
     /// <summary>The files that had unreadable lines or could not be read.</summary>
     public required IReadOnlyList<LogFileIssue> Issues { get; init; }
+}
+
+/// <summary>
+/// An exclusion a caller passes with its search (a tenant's own rules, say), on top of the stored rules: an entry it
+/// matches is left out of the result altogether, before anything is counted. It matches when every part it sets is
+/// contained (case ignored) in the entry's: <paramref name="Category"/> in its category, <paramref name="Message"/>
+/// in its rendered message; one that sets neither matches nothing.
+/// </summary>
+/// <param name="Category">Text the category contains, or null for any category.</param>
+/// <param name="Message">Text the message contains, or null for any message.</param>
+public sealed record LogExclusion(string? Category = null, string? Message = null)
+{
+    /// <summary>Whether <paramref name="entry"/> is left out.</summary>
+    /// <param name="entry">The entry tested.</param>
+    public bool Matches(LogEntry entry)
+    {
+        ArgumentNullException.ThrowIfNull(entry);
+        if (string.IsNullOrEmpty(Category) && string.IsNullOrEmpty(Message))
+            return false;
+        return Part(entry.Category, Category) && Part(entry.Message, Message);
+    }
+
+    private static bool Part(string? field, string? text) =>
+        string.IsNullOrEmpty(text) || field?.Contains(text, StringComparison.OrdinalIgnoreCase) == true;
 }

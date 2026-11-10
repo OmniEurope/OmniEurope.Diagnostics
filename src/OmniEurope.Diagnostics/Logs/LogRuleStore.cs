@@ -56,8 +56,8 @@ public enum LogRuleUpdate
 /// The default <see cref="ILogRuleStore"/>: the rules file of <see cref="LogsOptions.RulesFile"/>, as JSON. Every
 /// change reads, changes and writes the file under one lock, so concurrent posts never lose a rule; it is written to
 /// a temporary file of the same folder and moved over the old one, so a reader never sees half a file. An unreadable
-/// file is reported, never replaced. The file is small and read synchronously: the asynchronous methods only check
-/// their token before the work.
+/// file is reported, never replaced. Loading reads the file asynchronously; the changes are small and done
+/// synchronously under the lock, their asynchronous methods only checking their token before the work.
 /// </summary>
 internal sealed class LogRuleStore(LogDirectory directory) : ILogRuleStore
 {
@@ -72,15 +72,36 @@ internal sealed class LogRuleStore(LogDirectory directory) : ILogRuleStore
         try
         {
             using var stream = LogFileReader.OpenShared(directory.RulesPath);
-            var document = JsonSerializer.Deserialize<RulesDocument>(stream, Json);
-            var rules = (document?.Rules ?? []).Where(rule => !string.IsNullOrWhiteSpace(rule?.Pattern)).ToList();
-            var next = Math.Max(document?.NextId ?? 1, AfterLast(rules));
-            return new LogRuleSet(rules, null) { NextId = next };
+            return FromDocument(JsonSerializer.Deserialize<RulesDocument>(stream, Json));
         }
         catch (Exception exception) when (exception is JsonException or IOException or UnauthorizedAccessException)
         {
             return new LogRuleSet([], exception.Message);
         }
+    }
+
+    /// <inheritdoc />
+    public async Task<LogRuleSet> LoadAsync(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!File.Exists(directory.RulesPath))
+            return new LogRuleSet([], null);
+        try
+        {
+            await using var stream = LogFileReader.OpenShared(directory.RulesPath, asynchronous: true);
+            return FromDocument(await JsonSerializer.DeserializeAsync<RulesDocument>(stream, Json, cancellationToken));
+        }
+        catch (Exception exception) when (exception is JsonException or IOException or UnauthorizedAccessException)
+        {
+            return new LogRuleSet([], exception.Message);
+        }
+    }
+
+    private static LogRuleSet FromDocument(RulesDocument? document)
+    {
+        var rules = (document?.Rules ?? []).Where(rule => !string.IsNullOrWhiteSpace(rule?.Pattern)).ToList();
+        var next = Math.Max(document?.NextId ?? 1, AfterLast(rules));
+        return new LogRuleSet(rules, null) { NextId = next };
     }
 
     /// <inheritdoc />
@@ -94,9 +115,6 @@ internal sealed class LogRuleStore(LogDirectory directory) : ILogRuleStore
     /// <inheritdoc />
     public Task<LogRuleUpdate> DeleteAsync(int id, CancellationToken cancellationToken = default) =>
         Run(() => Delete(id), cancellationToken);
-
-    /// <inheritdoc />
-    public Task<LogRuleSet> LoadAsync(CancellationToken cancellationToken = default) => Run(Load, cancellationToken);
 
     private static Task<T> Run<T>(Func<T> work, CancellationToken cancellationToken) => SyncTask.Run(work, cancellationToken);
 

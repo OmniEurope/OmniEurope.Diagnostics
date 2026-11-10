@@ -38,8 +38,11 @@ public sealed class LogsOptions
     public string Directory { get; set; } = "";
 
     /// <summary>
-    /// The log files of <see cref="Directory"/>, as a file-name pattern (<c>*</c> and <c>?</c> wildcards, no path):
-    /// <see cref="DefaultFilePattern"/> by default. Only these files are listed, read, downloaded and purged.
+    /// The log files of <see cref="Directory"/>, as one or more file-name patterns separated by <c>;</c> (<c>*</c> and
+    /// <c>?</c> wildcards, no path; <c>*.json;*.log</c>, say): <see cref="DefaultFilePattern"/> by default. Only these
+    /// files are listed, read, downloaded and purged. A file ending in <c>.log</c> is read as plain text: every
+    /// non-empty line is an entry, its whole text the message, level Information, timestamped by the ISO date it
+    /// starts with, else by the previous line's, else by the file's last write.
     /// </summary>
     public string FilePattern { get; set; } = DefaultFilePattern;
 

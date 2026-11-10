@@ -15,7 +15,7 @@ describes a piece of work, not the state of the product.
 
 | Plan | Subject |
 |---|---|
-| None | |
+| [PLAN-003](PLAN-003-log-write-filter-search-exclusions-async-text-files.md) | Write filter, search exclusions, asynchronous reading, plain-text files |
 
 ## Archived plans
 

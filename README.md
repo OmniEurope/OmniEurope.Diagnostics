@@ -132,7 +132,7 @@ The `OmniLogs` section of the host configuration, then `AddOmniLogs(o => ...)`, 
 | Setting | Default | Purpose |
 |---|---|---|
 | `Directory` | required, or the file logger's | The folder the log files are written to; relative to the content root. Only its own files are read. Left empty with `AddOmniFileLogging()`, it is the logger's folder. |
-| `FilePattern` | `*.json` | The log files of the folder (file-name wildcards, no path). With the logger's folder, `{FilePrefix}*.json`. |
+| `FilePattern` | `*.json` | The log files of the folder (file-name wildcards, no path; several separated by `;`, `*.json;*.log`). With the logger's folder, `{FilePrefix}*.json`. A `.log` file is read as plain text: one entry per line, level Information, timestamped by the ISO date the line starts with, else the previous line's. |
 | `RulesFile` | `omni-log-rules.json` | The rules file, inside the folder; never listed as a log, never purged. |
 | `PageSize` | `50` | Entries per page, 1 to 1000. |
 | `MaxBytesRead` | `16777216` (16 MiB) | Log text read per request, 4 KiB to 1 GiB: newest files first, a large file from its end; the page says when older entries were left out. |
@@ -169,6 +169,9 @@ then `AddOmniFileLogging(o => ...)`, which has the last word:
 | `MaxFileBytes` | `104857600` (100 MiB) | Size above which the day continues in the next numbered file, 4 KiB to 1 GiB. |
 | `QueueCapacity` | `8192` | Entries waiting to be written, 16 to 1048576. |
 
+In code only, `Filter` (a `Func<FileLogCandidate, bool>`: category, level, event id, message, exception) drops the
+entries it refuses before they are formatted, without counting them as lost; a filter that throws keeps the entry.
+
 ### Reading the logs in your own screens
 
 `AddOmniLogs()` also registers what the pages are built on, for a host that shows the logs in its own UI:
@@ -176,8 +179,10 @@ then `AddOmniFileLogging(o => ...)`, which has the last word:
 - **`ILogJournal`** (scoped): `ListFilesAsync`, `SearchAsync(LogSearch)` (file, minimum level, dates, text, journal
   or excluded tab; every matching entry newest first, within `MaxBytesRead`, with the tab counts, the rules, the
   truncation flag and the unreadable lines), `OpenFileAsync` (a shared read stream, null when the name is not a
-  listed file) and `PurgeAsync`. The caller pages and sorts the entries. The `*Async` methods do their file I/O
-  synchronously on the calling thread; a host that must not block calls them from a background task.
+  listed file) and `PurgeAsync`. The caller pages and sorts the entries. `LogSearch.Exclusions` takes the caller's
+  own exclusions (`LogExclusion`: category and/or message, "contains", case ignored): an entry they match is in
+  neither tab nor count. The search reads with asynchronous streams and the opened stream is asynchronous; listing
+  and deleting files only touch metadata and run within the call.
 - **`ILogRuleStore`**: the exclusion rules (load, add, enable or disable, delete). The default keeps them in the
   rules file; a host that registers its own (a database, say), before or after `AddOmniLogs()`, gets it used by the
   pages and by the journal alike.

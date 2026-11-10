@@ -71,12 +71,18 @@ internal sealed class LogDirectory
         var folder = new DirectoryInfo(FullPath);
         if (!folder.Exists)
             return [];
-        return folder.EnumerateFiles(_options.FilePattern, SearchOption.TopDirectoryOnly)
+        return Patterns(_options.FilePattern)
+            .SelectMany(pattern => folder.EnumerateFiles(pattern, SearchOption.TopDirectoryOnly))
+            .DistinctBy(file => file.Name, StringComparer.Ordinal)
             .Where(file => !file.Name.StartsWith(_options.RulesFile, StringComparison.OrdinalIgnoreCase))
             .OrderByDescending(file => file.LastWriteTimeUtc)
             .ThenByDescending(file => file.Name, StringComparer.Ordinal)
             .ToList();
     }
+
+    /// <summary>The patterns of a <see cref="LogsOptions.FilePattern"/>: separated by <c>;</c>, blanks dropped.</summary>
+    public static IReadOnlyList<string> Patterns(string? filePattern) =>
+        (filePattern ?? "").Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
 
     /// <summary>
     /// A name without any path: no separator, no parent, no drive or root, no character a file name cannot hold.

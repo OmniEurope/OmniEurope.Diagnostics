@@ -26,7 +26,11 @@ internal sealed class LogsOptionsValidator : IValidateOptions<LogsOptions>
         return failures.Count == 0 ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(failures);
     }
 
-    /// <summary>A pattern the directory listing applies to file names only: wildcards, no separator, no parent.</summary>
-    private static bool IsFileNamePattern(string? pattern) =>
-        LogDirectory.IsBareName(pattern?.Replace('*', 'x').Replace('?', 'x'));
+    /// <summary>One or more patterns (separated by <c>;</c>) the directory listing applies to file names only:
+    /// wildcards, no separator, no parent.</summary>
+    private static bool IsFileNamePattern(string? pattern)
+    {
+        var patterns = LogDirectory.Patterns(pattern);
+        return patterns.Count > 0 && patterns.All(one => LogDirectory.IsBareName(one.Replace('*', 'x').Replace('?', 'x')));
+    }
 }

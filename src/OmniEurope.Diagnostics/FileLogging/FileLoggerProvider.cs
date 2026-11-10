@@ -19,6 +19,7 @@ internal sealed class FileLoggerProvider : ILoggerProvider, ISupportExternalScop
     private readonly LogFileWriter _writer;
     private readonly TimeProvider _time;
     private readonly LogLevel _minLevel;
+    private readonly Func<FileLogCandidate, bool>? _filter;
     private IExternalScopeProvider? _scopes;
 
     /// <summary>The container's constructor: a relative folder is resolved against the content root.</summary>
@@ -32,6 +33,7 @@ internal sealed class FileLoggerProvider : ILoggerProvider, ISupportExternalScop
     {
         _time = time;
         _minLevel = options.MinLevel;
+        _filter = options.Filter;
         var directory = Path.GetFullPath(Path.Combine(contentRoot, options.Directory));
         _writer = new LogFileWriter(directory, new LogFileNames(options.FilePrefix, options.Instance), options, time, drainGate, openFile);
     }
@@ -57,7 +59,10 @@ internal sealed class FileLoggerProvider : ILoggerProvider, ISupportExternalScop
         string json;
         try
         {
-            var entry = new ClefEvent(now, level, category, eventId, formatter(state, exception), exception);
+            var message = formatter(state, exception);
+            if (!Accepts(new FileLogCandidate(category, level, eventId, message, exception)))
+                return;
+            var entry = new ClefEvent(now, level, category, eventId, message, exception);
             json = ClefFormatter.Format(entry, state, _scopes, Activity.Current);
         }
         catch (Exception)
@@ -67,6 +72,21 @@ internal sealed class FileLoggerProvider : ILoggerProvider, ISupportExternalScop
             return;
         }
         _writer.Enqueue(now, json);
+    }
+
+    private bool Accepts(FileLogCandidate candidate)
+    {
+        if (_filter is null)
+            return true;
+        try
+        {
+            return _filter(candidate);
+        }
+        catch (Exception)
+        {
+            // A broken filter never hides the logs: the entry is written.
+            return true;
+        }
     }
 }
 

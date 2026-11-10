@@ -4,6 +4,22 @@ Notable changes to this project are documented here, following the Keep a Change
 
 ## [Unreleased]
 
+### Added
+
+- File logger: `FileLoggingOptions.Filter`, set in code, decides per entry (category, level, event id, message,
+  exception) whether it is written; a refused entry is not counted as lost, a filter that throws keeps the entry.
+- `LogSearch.Exclusions`: the caller's own exclusions (`LogExclusion`, category and/or message, "contains", case
+  ignored), applied before anything is counted, so the tab counts and the caller's pages stay right.
+- Logs page and `ILogJournal`: `OmniLogs:FilePattern` accepts several patterns separated by `;` (`*.json;*.log`); a
+  `.log` file is read as plain text, one entry per line (the line as message, level Information, the ISO date it
+  starts with as timestamp, else the previous line's, else the file's last write).
+
+### Changed
+
+- `ILogJournal.SearchAsync` reads the files with asynchronous streams, `OpenFileAsync` returns a stream opened for
+  asynchronous reads and the default rule store loads its file asynchronously. Listing and deleting files still run
+  within the call (metadata only, no asynchronous system call exists for them).
+
 ## [1.0.1] - 2026-11-09
 
 ### Added

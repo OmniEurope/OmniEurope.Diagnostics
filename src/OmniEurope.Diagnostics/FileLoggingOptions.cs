@@ -100,4 +100,12 @@ public sealed class FileLoggingOptions
     /// nor counted.
     /// </summary>
     public int QueueCapacity { get; set; } = DefaultQueueCapacity;
+
+    /// <summary>
+    /// Optional, code only (not read from the configuration): decides, for each entry that passed the level, whether
+    /// it is written; false drops it without counting it as lost. Called on the logging thread before the entry is
+    /// formatted, so it must be quick and thread-safe. An entry the filter throws on is written: a broken filter never
+    /// hides the logs.
+    /// </summary>
+    public Func<FileLogCandidate, bool>? Filter { get; set; }
 }

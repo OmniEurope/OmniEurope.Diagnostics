@@ -15,7 +15,7 @@ internal sealed class LogChangeWatcher : ILogChanges, IDisposable
 
     private readonly Lock _gate = new();
     private readonly string _folder;
-    private readonly string _pattern;
+    private readonly IReadOnlyList<string> _patterns;
     private readonly string _rulesFile;
     private readonly TimeProvider _time;
     private EventHandler? _changed;
@@ -32,7 +32,7 @@ internal sealed class LogChangeWatcher : ILogChanges, IDisposable
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(time);
         _folder = directory.FullPath;
-        _pattern = options.Value.FilePattern;
+        _patterns = LogDirectory.Patterns(options.Value.FilePattern);
         _rulesFile = options.Value.RulesFile;
         _time = time;
     }
@@ -124,7 +124,7 @@ internal sealed class LogChangeWatcher : ILogChanges, IDisposable
     private bool IsLogFile(string? name) =>
         !string.IsNullOrEmpty(name)
         && !name.StartsWith(_rulesFile, StringComparison.OrdinalIgnoreCase)
-        && FileSystemName.MatchesSimpleExpression(_pattern, name);
+        && _patterns.Any(pattern => FileSystemName.MatchesSimpleExpression(pattern, name));
 
     private void Signal()
     {
@@ -184,11 +184,13 @@ internal sealed class LogChangeWatcher : ILogChanges, IDisposable
         FileSystemWatcher? watcher = null;
         try
         {
-            watcher = new FileSystemWatcher(_folder, _pattern)
+            watcher = new FileSystemWatcher(_folder)
             {
                 IncludeSubdirectories = false,
                 NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.Size | NotifyFilters.CreationTime,
             };
+            foreach (var pattern in _patterns)
+                watcher.Filters.Add(pattern);
             watcher.Created += (_, e) => OnFileEvent(e.Name);
             watcher.Changed += (_, e) => OnFileEvent(e.Name);
             watcher.Deleted += (_, e) => OnFileEvent(e.Name);

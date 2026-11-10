@@ -5,8 +5,9 @@ namespace OmniEurope.Diagnostics.Logs;
 
 /// <summary>
 /// The default <see cref="ILogJournal"/>, over <see cref="LogDirectory"/>, <see cref="LogFileReader"/> and the
-/// host's <see cref="ILogRuleStore"/>. The files are read synchronously within the call (as the pages always did),
-/// the token checked before each file and each line; the rules are awaited from the store.
+/// host's <see cref="ILogRuleStore"/>. The search reads the files with asynchronous streams, the token checked before
+/// each file, during each read and before each line; the rules are awaited from the store. Listing, opening and
+/// deleting files only touch metadata, which the system offers no asynchronous call for: they run within the call.
 /// </summary>
 internal sealed class LogJournal(LogDirectory directory, IOptions<LogsOptions> options, ILogRuleStore rules, TimeProvider time)
     : ILogJournal
@@ -22,7 +23,7 @@ internal sealed class LogJournal(LogDirectory directory, IOptions<LogsOptions> o
     {
         ArgumentNullException.ThrowIfNull(search);
         var set = await rules.LoadAsync(cancellationToken);
-        var read = LogFileReader.Read(FilesOf(search.File), _maxBytesRead, cancellationToken);
+        var read = await LogFileReader.ReadAsync(FilesOf(search.File), _maxBytesRead, cancellationToken);
         var rows = LogSelection.Rows(read.Entries, set.Rules, search);
         var excludedCount = rows.Count(row => row.Rule is not null);
         return new LogSearchResult
@@ -64,7 +65,7 @@ internal sealed class LogJournal(LogDirectory directory, IOptions<LogsOptions> o
             return null;
         try
         {
-            return LogFileReader.OpenShared(file.FullName);
+            return LogFileReader.OpenShared(file.FullName, asynchronous: true);
         }
         catch (Exception exception) when (exception is FileNotFoundException or DirectoryNotFoundException)
         {

@@ -188,12 +188,12 @@ public sealed class LogReadingTests : IDisposable
     }
 
     [Fact]
-    public void AMalformedLine_IsSkippedAndCounted_WithItsNumber_AndATornLastLineIsLeftForLater()
+    public async Task AMalformedLine_IsSkippedAndCounted_WithItsNumber_AndATornLastLineIsLeftForLater()
     {
         var path = _folder.Write("app.json", [Clef.Line(Clef.Noon, "one"), "garbage", "", Clef.Line(Clef.Noon, "two"), "{\"broken\":"]);
         File.AppendAllText(path, "{\"@t\":\"2026-11-08T12:00:00Z\",\"@mt\":\"torn"); // being written: no end of line yet
 
-        var read = LogFileReader.Read([new FileInfo(path)], LogsOptions.DefaultMaxBytesRead, Ct);
+        var read = await LogFileReader.ReadAsync([new FileInfo(path)], LogsOptions.DefaultMaxBytesRead, Ct);
 
         Assert.Equal(["one", "two"], read.Entries.Select(e => e.Message));
         Assert.Equal([1, 4], read.Entries.Select(e => e.Line!.Value));
@@ -204,36 +204,36 @@ public sealed class LogReadingTests : IDisposable
     }
 
     [Fact]
-    public void ACompleteLastLine_WithoutItsEndOfLine_IsRead_AndAByteOrderMarkIsSkipped()
+    public async Task ACompleteLastLine_WithoutItsEndOfLine_IsRead_AndAByteOrderMarkIsSkipped()
     {
         var path = _folder.File("bom.json");
         File.WriteAllText(path, Clef.Line(Clef.Noon, "first") + "\r\n" + Clef.Line(Clef.Noon, "last"), new UTF8Encoding(true));
 
-        var read = LogFileReader.Read([new FileInfo(path)], LogsOptions.DefaultMaxBytesRead, Ct);
+        var read = await LogFileReader.ReadAsync([new FileInfo(path)], LogsOptions.DefaultMaxBytesRead, Ct);
 
         Assert.Equal(["first", "last"], read.Entries.Select(e => e.Message));
         Assert.Empty(read.Issues);
     }
 
     [Fact]
-    public void OnlyTheFirstTenUnreadableLineNumbers_AreKept()
+    public async Task OnlyTheFirstTenUnreadableLineNumbers_AreKept()
     {
         var path = _folder.Write("bad.json", Enumerable.Repeat("bad", 12));
 
-        var issue = Assert.Single(LogFileReader.Read([new FileInfo(path)], LogsOptions.DefaultMaxBytesRead, Ct).Issues);
+        var issue = Assert.Single((await LogFileReader.ReadAsync([new FileInfo(path)], LogsOptions.DefaultMaxBytesRead, Ct)).Issues);
 
         Assert.Equal((12, 10), (issue.UnreadableCount, issue.Lines.Count));
     }
 
     [Fact]
-    public void TheCap_ReadsTheNewestFileFirst_AndALargeFileFromItsEnd()
+    public async Task TheCap_ReadsTheNewestFileFirst_AndALargeFileFromItsEnd()
     {
         var older = _folder.Write("older.json", [Clef.Line(Clef.Noon, "old")]);
         var lines = Enumerable.Range(1, 100).Select(i => Clef.Line(Clef.Noon.AddSeconds(i), "line " + i)).ToList();
         var newest = _folder.Write("newest.json", lines);
         var budget = Encoding.UTF8.GetByteCount(string.Concat(lines.TakeLast(3).Select(l => l + "\n"))) + 5;
 
-        var read = LogFileReader.Read([new FileInfo(newest), new FileInfo(older)], budget, Ct);
+        var read = await LogFileReader.ReadAsync([new FileInfo(newest), new FileInfo(older)], budget, Ct);
 
         Assert.True(read.Truncated);
         Assert.Equal(["line 98", "line 99", "line 100"], read.Entries.Select(e => e.Message));
@@ -242,7 +242,7 @@ public sealed class LogReadingTests : IDisposable
     }
 
     [Fact]
-    public void ACapStartingExactlyOnALineBoundary_KeepsThatLine_AndOneByteLessDropsItAsAFragment()
+    public async Task ACapStartingExactlyOnALineBoundary_KeepsThatLine_AndOneByteLessDropsItAsAFragment()
     {
         // The last entry is exactly 4096 bytes with its end of line.
         var bare = Encoding.UTF8.GetByteCount(Clef.Line(Clef.Noon.AddSeconds(1), "last"));
@@ -262,7 +262,7 @@ public sealed class LogReadingTests : IDisposable
         ];
         foreach (var (budget, messages, truncated) in expected)
         {
-            var read = LogFileReader.Read([new FileInfo(path)], budget, Ct);
+            var read = await LogFileReader.ReadAsync([new FileInfo(path)], budget, Ct);
 
             Assert.True(messages.SequenceEqual(read.Entries.Select(e => e.Message)), $"budget {budget}: read {read.Entries.Count} entries");
             Assert.Equal(truncated, read.Truncated);
@@ -271,12 +271,12 @@ public sealed class LogReadingTests : IDisposable
     }
 
     [Fact]
-    public void ACapSmallerThanOneLine_ReadsNothing_AndSaysItWasCut()
+    public async Task ACapSmallerThanOneLine_ReadsNothing_AndSaysItWasCut()
     {
         var path = _folder.File("one.json");
         File.WriteAllText(path, Clef.Line(Clef.Noon, new string('x', 200))); // no end of line at all
 
-        var read = LogFileReader.Read([new FileInfo(path)], 50, Ct);
+        var read = await LogFileReader.ReadAsync([new FileInfo(path)], 50, Ct);
 
         Assert.True(read.Truncated);
         Assert.Empty(read.Entries);
@@ -284,38 +284,38 @@ public sealed class LogReadingTests : IDisposable
     }
 
     [Fact]
-    public void AnExhaustedCap_LeavesTheOlderFilesUnread()
+    public async Task AnExhaustedCap_LeavesTheOlderFilesUnread()
     {
         var first = _folder.Write("a.json", [Clef.Line(Clef.Noon, "a")]);
         var second = _folder.Write("b.json", [Clef.Line(Clef.Noon, "b")]);
 
-        var read = LogFileReader.Read([new FileInfo(first), new FileInfo(second)], new FileInfo(first).Length, Ct);
+        var read = await LogFileReader.ReadAsync([new FileInfo(first), new FileInfo(second)], new FileInfo(first).Length, Ct);
 
         Assert.Equal(["a"], read.Entries.Select(e => e.Message));
         Assert.True(read.Truncated);
     }
 
     [Fact]
-    public void AFileTheSinkIsWriting_IsReadWithoutBlockingIt()
+    public async Task AFileTheSinkIsWriting_IsReadWithoutBlockingIt()
     {
         var path = _folder.Write("live.json", [Clef.Line(Clef.Noon, "before")]);
         using var sink = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.Read);
 
-        var read = LogFileReader.Read([new FileInfo(path)], LogsOptions.DefaultMaxBytesRead, Ct);
+        var read = await LogFileReader.ReadAsync([new FileInfo(path)], LogsOptions.DefaultMaxBytesRead, Ct);
         sink.Write(Encoding.UTF8.GetBytes(Clef.Line(Clef.Noon, "after") + "\n"));
 
         Assert.Equal(["before"], read.Entries.Select(e => e.Message));
     }
 
     [Fact]
-    public void AFileThatCannotBeOpened_IsNamed_AndTheOthersAreStillRead()
+    public async Task AFileThatCannotBeOpened_IsNamed_AndTheOthersAreStillRead()
     {
         var locked = _folder.Write("locked.json", [Clef.Line(Clef.Noon, "hidden")]);
         var fine = _folder.Write("fine.json", [Clef.Line(Clef.Noon, "shown")]);
         var folderAsFile = Directory.CreateDirectory(_folder.File("folder.json"));
         using var exclusive = new FileStream(locked, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
 
-        var read = LogFileReader.Read([new FileInfo(locked), new FileInfo(folderAsFile.FullName), new FileInfo(fine)], LogsOptions.DefaultMaxBytesRead, Ct);
+        var read = await LogFileReader.ReadAsync([new FileInfo(locked), new FileInfo(folderAsFile.FullName), new FileInfo(fine)], LogsOptions.DefaultMaxBytesRead, Ct);
 
         Assert.Equal(["shown"], read.Entries.Select(e => e.Message));
         Assert.Equal(["locked.json", "folder.json"], read.Issues.Select(issue => issue.File));
