@@ -4,6 +4,8 @@ Notable changes to this project are documented here, following the Keep a Change
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-11
+
 ### Added
 
 - File logger: `FileLoggingOptions.Filter`, set in code, decides per entry (category, level, event id, message,
@@ -19,6 +21,8 @@ Notable changes to this project are documented here, following the Keep a Change
 - `ILogJournal.SearchAsync` reads the files with asynchronous streams, `OpenFileAsync` returns a stream opened for
   asynchronous reads and the default rule store loads its file asynchronously. Listing and deleting files still run
   within the call (metadata only, no asynchronous system call exists for them).
+- The .NET SDK floor moves to 11.0.100; the package still targets `net10.0`.
+- Test dependencies: bUnit 2.15.2, Microsoft.AspNetCore.TestHost 10.0.15.
 
 ## [1.0.1] - 2026-11-09
 
