@@ -166,7 +166,15 @@ public sealed class LogSearchAdditionsTests : IDisposable
         await using var stream = await Journal().OpenFileAsync("app.json", Ct);
 
         var file = Assert.IsType<FileStream>(stream);
-        Assert.True(file.IsAsync);
+        // Since .NET 11, IsAsync on Unix reports O_NONBLOCK, which a regular file never has: the property only
+        // reflects FileOptions.Asynchronous where file I/O can be asynchronous, on Windows and before .NET 11.
+        if (OperatingSystem.IsWindows() || Environment.Version.Major < 11)
+        {
+            Assert.True(file.IsAsync);
+        }
+
+        var buffer = new byte[16];
+        Assert.True(await file.ReadAsync(buffer, Ct) > 0);
     }
 
     [Fact]
