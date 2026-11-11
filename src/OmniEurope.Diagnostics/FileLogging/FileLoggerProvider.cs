@@ -60,7 +60,8 @@ internal sealed class FileLoggerProvider : ILoggerProvider, ISupportExternalScop
         try
         {
             var message = formatter(state, exception);
-            if (!Accepts(new FileLogCandidate(category, level, eventId, message, exception)))
+            // Without a filter, no candidate is built: the write path allocates nothing for an unused option.
+            if (_filter is not null && !Accepts(_filter, new FileLogCandidate(category, level, eventId, message, exception)))
                 return;
             var entry = new ClefEvent(now, level, category, eventId, message, exception);
             json = ClefFormatter.Format(entry, state, _scopes, Activity.Current);
@@ -74,13 +75,11 @@ internal sealed class FileLoggerProvider : ILoggerProvider, ISupportExternalScop
         _writer.Enqueue(now, json);
     }
 
-    private bool Accepts(FileLogCandidate candidate)
+    private static bool Accepts(Func<FileLogCandidate, bool> filter, FileLogCandidate candidate)
     {
-        if (_filter is null)
-            return true;
         try
         {
-            return _filter(candidate);
+            return filter(candidate);
         }
         catch (Exception)
         {

@@ -4,6 +4,12 @@ Notable changes to this project are documented here, following the Keep a Change
 
 ## [Unreleased]
 
+### Changed
+
+- File logger: without `FileLoggingOptions.Filter`, the write path no longer builds the filter candidate for each entry.
+- Continuous integration installs the ASP.NET Core runtime of the older target with a `dotnet-install.sh` pinned to a
+  commit of the official install scripts and checked against its SHA-256.
+
 ## [1.1.0] - 2026-11-11
 
 ### Added

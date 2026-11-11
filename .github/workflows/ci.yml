@@ -25,7 +25,11 @@ jobs:
           $sdkMajor = [int]((dotnet --version).Split('.')[0])
           $frameworks = ([xml](Get-Content Directory.Build.props -Raw)).Project.PropertyGroup.TargetFrameworks
           if (-not $frameworks) { throw 'Directory.Build.props declares no TargetFrameworks.' }
-          Invoke-WebRequest https://dot.net/v1/dotnet-install.sh -OutFile dotnet-install.sh
+          # The install script is pinned to a commit of dotnet/install-scripts and checked against its SHA-256.
+          Invoke-WebRequest https://raw.githubusercontent.com/dotnet/install-scripts/ee83f9c42135205be4e0503bd472b6f99c9b7d51/src/dotnet-install.sh -OutFile dotnet-install.sh
+          $expected = '082f7685e156738a1b2e2ed8381a621870d4ce8e8c59278034556f05c186eb2e'
+          $actual = (Get-FileHash dotnet-install.sh -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actual -ne $expected) { throw "dotnet-install.sh does not match its pinned SHA-256 ($actual)." }
           foreach ($framework in $frameworks.Split(';')) {
             $channel = $framework -replace '^net', ''
             if ([int]$channel.Split('.')[0] -ge $sdkMajor) { continue }

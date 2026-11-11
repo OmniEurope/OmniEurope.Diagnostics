@@ -70,9 +70,18 @@ internal static class LogFileReader
     /// <summary>Opens <paramref name="path"/> shared for writing and deleting, so the host's sink is never blocked.</summary>
     /// <param name="path">The file.</param>
     /// <param name="asynchronous">True to open it for asynchronous reads.</param>
-    internal static FileStream OpenShared(string path, bool asynchronous = false) =>
-        new(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete, 4096,
-            asynchronous ? FileOptions.Asynchronous : FileOptions.None);
+    internal static FileStream OpenShared(string path, bool asynchronous = false) => new(path, SharedOptions(asynchronous));
+
+    /// <summary>The options <see cref="OpenShared"/> opens a file with; separate so they can be checked on every platform.</summary>
+    /// <param name="asynchronous">True to open the file for asynchronous reads.</param>
+    internal static FileStreamOptions SharedOptions(bool asynchronous) => new()
+    {
+        Mode = FileMode.Open,
+        Access = FileAccess.Read,
+        Share = FileShare.ReadWrite | FileShare.Delete,
+        BufferSize = 4096,
+        Options = asynchronous ? FileOptions.Asynchronous : FileOptions.None,
+    };
 
     /// <summary>
     /// Copies the bytes <paramref name="source"/> holds when the copy starts, and no more: the host's sink keeps

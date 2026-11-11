@@ -15,7 +15,7 @@ describes a piece of work, not the state of the product.
 
 | Plan | Subject |
 |---|---|
-| [PLAN-003](PLAN-003-log-write-filter-search-exclusions-async-text-files.md) | Write filter, search exclusions, asynchronous reading, plain-text files |
+| None | |
 
 ## Archived plans
 
@@ -23,3 +23,4 @@ describes a piece of work, not the state of the product.
 |---|---|---|
 | [PLAN-001](archive/PLAN-001-initial-scope.md) | Initial scope delivered, 0.1.0 published on NuGet | None |
 | [PLAN-002](archive/PLAN-002-file-logging-and-public-log-reader.md) | File writer, public log reader, rule store and change signal implemented on develop (1.0.1) | None |
+| [PLAN-003](archive/PLAN-003-log-write-filter-search-exclusions-async-text-files.md) | Write filter, search exclusions, asynchronous reading and plain-text files, published in 1.1.0 | None |

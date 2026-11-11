@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: EUPL-1.2 -->
 # PLAN-003 - Write filter, search exclusions, asynchronous reading and plain-text files
 
-Status: in progress on develop (2026-11-10). Target version: not decided.
+Status: done, implemented on develop and published in 1.1.0 (2026-11-11).
 
 ## Why
 

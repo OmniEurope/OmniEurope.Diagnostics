@@ -178,6 +178,15 @@ public sealed class LogSearchAdditionsTests : IDisposable
     }
 
     [Fact]
+    public void TheSharedOpening_AsksForAsynchronousReadsOnlyWhenRequested()
+    {
+        // Checked on the options themselves: IsAsync no longer reports them on Unix since .NET 11.
+        Assert.Equal(FileOptions.Asynchronous, LogFileReader.SharedOptions(asynchronous: true).Options);
+        Assert.Equal(FileOptions.None, LogFileReader.SharedOptions(asynchronous: false).Options);
+        Assert.Equal(FileShare.ReadWrite | FileShare.Delete, LogFileReader.SharedOptions(asynchronous: true).Share);
+    }
+
+    [Fact]
     public void SeveralPatterns_AreValidated_EachAsAFileName()
     {
         var validator = new LogsOptionsValidator();
