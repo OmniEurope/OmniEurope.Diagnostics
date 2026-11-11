@@ -17,28 +17,52 @@ jobs:
       - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
+      - name: Install the runtimes of the older targets
+        # The SDK of global.json builds every target but ships only its own runtime: the ASP.NET Core
+        # runtime of each older target framework (read from Directory.Build.props) runs its tests.
+        shell: pwsh
+        run: |
+          $sdkMajor = [int]((dotnet --version).Split('.')[0])
+          $frameworks = ([xml](Get-Content Directory.Build.props -Raw)).Project.PropertyGroup.TargetFrameworks
+          if (-not $frameworks) { throw 'Directory.Build.props declares no TargetFrameworks.' }
+          Invoke-WebRequest https://dot.net/v1/dotnet-install.sh -OutFile dotnet-install.sh
+          foreach ($framework in $frameworks.Split(';')) {
+            $channel = $framework -replace '^net', ''
+            if ([int]$channel.Split('.')[0] -ge $sdkMajor) { continue }
+            bash dotnet-install.sh --runtime aspnetcore --channel $channel --install-dir $env:DOTNET_ROOT
+            if ($LASTEXITCODE -ne 0) { throw "Installing the ASP.NET Core $channel runtime failed." }
+          }
+          dotnet --list-runtimes
       - name: Restore
         run: dotnet restore OmniEurope.Diagnostics.slnx
       - name: Build
         run: dotnet build OmniEurope.Diagnostics.slnx --configuration Release --no-restore
-      - name: Tests and coverage
+      - name: Tests and coverage (net10.0)
         # global.json runs dotnet test on Microsoft.Testing.Platform: xunit.v3 runs the suite, TrxReport
         # writes the TRX and coverlet.MTP the Cobertura report, restricted to the published library.
+        # The gates read one Cobertura report, so coverage comes from the net10.0 run.
         run: >-
           dotnet test --project tests/OmniEurope.Diagnostics.Tests/OmniEurope.Diagnostics.Tests.csproj
-          --configuration Release --no-build --no-progress
+          --configuration Release --no-build --no-progress --framework net10.0
           --report-trx --report-trx-filename tests.trx --results-directory artifacts/coverage
           --coverlet --coverlet-output-format cobertura --coverlet-include "[OmniEurope.Diagnostics]*"
+      - name: Tests (net11.0)
+        run: >-
+          dotnet test --project tests/OmniEurope.Diagnostics.Tests/OmniEurope.Diagnostics.Tests.csproj
+          --configuration Release --no-build --no-progress --framework net11.0
+          --report-trx --report-trx-filename tests.trx --results-directory artifacts/tests-net11
       - name: Verify the test results exist
         # A run that wrote no result file is a failure, whatever its exit code.
         shell: pwsh
         run: |
-          $trx = Get-ChildItem artifacts/coverage -Filter tests.trx -Recurse -File | Select-Object -First 1
-          if (-not $trx) { throw 'The test run produced no TRX.' }
-          $counters = ([xml](Get-Content $trx.FullName -Raw)).TestRun.ResultSummary.Counters
-          if ([int]$counters.total -eq 0) { throw 'The TRX holds no test.' }
+          foreach ($root in 'artifacts/coverage', 'artifacts/tests-net11') {
+            $trx = Get-ChildItem $root -Filter tests.trx -Recurse -File | Select-Object -First 1
+            if (-not $trx) { throw "The test run produced no TRX under $root." }
+            $counters = ([xml](Get-Content $trx.FullName -Raw)).TestRun.ResultSummary.Counters
+            if ([int]$counters.total -eq 0) { throw "The TRX under $root holds no test." }
+            "Tests ($root): $($counters.passed) passed of $($counters.total)."
+          }
           if (-not (Get-ChildItem artifacts/coverage -Filter '*.cobertura*.xml' -Recurse -File)) { throw 'No Cobertura report.' }
-          "Tests: $($counters.passed) passed of $($counters.total)."
       - name: Coverage floors
         shell: pwsh
         run: ./scripts/coverage-gate.ps1 -CoverageRoot artifacts/coverage
@@ -59,8 +83,9 @@ jobs:
           $zip = [IO.Compression.ZipFile]::OpenRead($package.FullName)
           try {
             $entries = @($zip.Entries.FullName)
-            foreach ($required in 'README.md', 'lib/net10.0/OmniEurope.Diagnostics.dll', 'lib/net10.0/OmniEurope.Diagnostics.xml', 'lib/net10.0/en/OmniEurope.Diagnostics.resources.dll') {
-              if ($entries -notcontains $required) { throw "Missing from the package: $required" }
+            $required = @('README.md') + @('net10.0', 'net11.0' | ForEach-Object { "lib/$_/OmniEurope.Diagnostics.dll", "lib/$_/OmniEurope.Diagnostics.xml", "lib/$_/en/OmniEurope.Diagnostics.resources.dll" })
+            foreach ($file in $required) {
+              if ($entries -notcontains $file) { throw "Missing from the package: $file" }
             }
             $styled = @($entries | Where-Object { $_ -match '\.(css|js|mjs)$' })
             if ($styled) { throw "The package must ship no stylesheet or script: $($styled -join ', ')" }

@@ -5,7 +5,9 @@
   <ItemGroup>
     <PackageVersion Include="bunit" Version="2.15.2" />
     <PackageVersion Include="coverlet.MTP" Version="10.1.0" />
-    <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="10.0.15" />
+    <!-- The test host follows the target framework's ASP.NET Core version. -->
+    <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="10.0.15" Condition="'$(TargetFramework)' == 'net10.0'" />
+    <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="11.0.0" Condition="'$(TargetFramework)' == 'net11.0'" />
     <PackageVersion Include="Microsoft.Testing.Extensions.TrxReport" Version="2.5.2" />
     <PackageVersion Include="xunit.v3" Version="4.0.3" />
   </ItemGroup>

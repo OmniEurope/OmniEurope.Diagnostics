@@ -21,8 +21,8 @@ Notable changes to this project are documented here, following the Keep a Change
 - `ILogJournal.SearchAsync` reads the files with asynchronous streams, `OpenFileAsync` returns a stream opened for
   asynchronous reads and the default rule store loads its file asynchronously. Listing and deleting files still run
   within the call (metadata only, no asynchronous system call exists for them).
-- The .NET SDK floor moves to 11.0.100; the package still targets `net10.0`.
-- Test dependencies: bUnit 2.15.2, Microsoft.AspNetCore.TestHost 10.0.15.
+- The package targets .NET 10 and .NET 11 (`net10.0` and `net11.0`); the .NET SDK floor moves to 11.0.100.
+- Test dependencies: bUnit 2.15.2, Microsoft.AspNetCore.TestHost 10.0.15 (net10.0) and 11.0.0 (net11.0); the suite runs on both targets.
 
 ## [1.0.1] - 2026-11-09
 
