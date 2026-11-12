@@ -81,7 +81,7 @@ public sealed class LogSearchAdditionsTests : IDisposable
     }
 
     [Fact]
-    public async Task APlainTextFile_IsListedAndSearched_EachLineAnEntry_WithTheTimestampItStartsWith()
+    public async Task APlainTextFile_IsListedAndSearched_ATimestampedLineOpensAnEntry_ThatTheNextLinesContinue()
     {
         WriteJsonFile();
         _folder.Write("legacy.log", [
@@ -99,15 +99,78 @@ public sealed class LogSearchAdditionsTests : IDisposable
 
         Assert.Equal(["app.json", "legacy.log"], files.Select(file => file.Name));
         Assert.Equal(
-            ["2026-11-08T13:30:00Z [INF] Legacy import done", "   at Legacy.Import()", "System.Exception: boom", "2026-11-08 11:00:00.000 +01:00 [ERR] Legacy import failed"],
+            ["Legacy import done", "Legacy import failed\nSystem.Exception: boom\n   at Legacy.Import()"],
             result.Entries.Select(row => row.Entry.Message));
-        Assert.All(result.Entries, row => Assert.Equal(LogSeverity.Information, row.Entry.Level));
+        Assert.Equal([LogSeverity.Information, LogSeverity.Error], result.Entries.Select(row => row.Entry.Level));
         Assert.Equal(new DateTimeOffset(2026, 11, 8, 10, 0, 0, TimeSpan.Zero), result.Entries[^1].Entry.Timestamp);
-        // A line without its own instant takes the previous line's, so a stack trace stays with its line.
-        Assert.Equal(result.Entries[^1].Entry.Timestamp, result.Entries[1].Entry.Timestamp);
-        Assert.Equal([5, 3, 2, 1], result.Entries.Select(row => row.Entry.Line ?? 0));
+        Assert.Equal([5, 1], result.Entries.Select(row => row.Entry.Line ?? 0));
         Assert.Empty(result.Issues);
     }
+
+    [Fact]
+    public async Task ABracketedMultilineTextLog_GivesOneEntryPerIncident_WithItsInstantLevelAndCategory()
+    {
+        const string separator = "--------------------------------------------------------------------------------";
+        _folder.Write("crash.log", [
+            separator,
+            "[2026-11-12 11:09:34.613 +01:00] Warning My.Usage.PlanService: Usage endpoint returned {Status}",
+            "ExceptionType=none; HResult=0x00000000; FailureSite=none; Fingerprint=A5F56C9E6D15F49A",
+            separator,
+            "[2026-11-12 11:10:00.000 +01:00] Critical My.App: Unhandled exception",
+            "System.InvalidOperationException: boom",
+            "==========",
+            "orphan line after a separator",
+        ], Day);
+
+        var result = await Journal("*.log").SearchAsync(new LogSearch(), Ct);
+
+        Assert.Equal(3, result.Entries.Count);
+        var warning = result.Entries.Single(row => row.Entry.Level == LogSeverity.Warning).Entry;
+        Assert.Equal(new DateTimeOffset(2026, 11, 12, 10, 9, 34, 613, TimeSpan.Zero), warning.Timestamp);
+        Assert.Equal("My.Usage.PlanService", warning.Category);
+        Assert.Equal("Usage endpoint returned {Status}\nExceptionType=none; HResult=0x00000000; FailureSite=none; Fingerprint=A5F56C9E6D15F49A", warning.Message);
+        Assert.Equal(2, warning.Line);
+        var fatal = result.Entries.Single(row => row.Entry.Level == LogSeverity.Fatal).Entry;
+        Assert.Equal("Unhandled exception\nSystem.InvalidOperationException: boom", fatal.Message);
+        // A separator closes the entry: a line after it without a timestamp stands alone, dated as the entry before.
+        var orphan = result.Entries.Single(row => row.Entry.Message == "orphan line after a separator").Entry;
+        Assert.Equal(LogSeverity.Information, orphan.Level);
+        Assert.Equal(fatal.Timestamp, orphan.Timestamp);
+        Assert.Equal(new DateTimeOffset(2026, 11, 12, 10, 10, 0, TimeSpan.Zero), fatal.Timestamp);
+    }
+
+    [Theory]
+    [InlineData("[2026-11-12 11:09:34.613 +01:00] Warning Svc: text", "Warning", "Svc", "text")]
+    [InlineData("2026-11-12 11:09:34 [WRN] text", "Warning", null, "text")]
+    [InlineData("2026-11-12T10:00:00Z DBG Svc.Name: a: b", "Debug", "Svc.Name", "a: b")]
+    [InlineData("2026-11-12T10:00:00Z Trace done", "Verbose", null, "done")]
+    [InlineData("2026-11-12T10:00:00Z Note: not a level", "Information", null, "Note: not a level")]
+    [InlineData("2026-11-12T10:00:00Z Error a:b: c", "Error", null, "a:b: c")]
+    [InlineData("[2026-11-12 10:00:00Z]", "Information", null, "[2026-11-12 10:00:00Z]")]
+    public void ATimestampedLine_ReadsItsLevelCategoryAndMessage(string line, string level, string? category, string message)
+    {
+        var entry = LogTextLine.ParseHeader(line);
+
+        Assert.NotNull(entry);
+        Assert.Equal(Enum.Parse<LogSeverity>(level), entry.Level);
+        Assert.Equal(category, entry.Category);
+        Assert.Equal(message, entry.Message);
+    }
+
+    [Theory]
+    [InlineData("[not a date] text")]
+    [InlineData("[2026-11-12 11:09:34 no closing bracket")]
+    [InlineData("[2026-13-40 10:00:00] bad date")]
+    [InlineData("   at Some.Method()")]
+    public void ALineWithoutALeadingTimestamp_OpensNoEntry(string line) => Assert.Null(LogTextLine.ParseHeader(line));
+
+    [Theory]
+    [InlineData("---", true)]
+    [InlineData("  ==========  ", true)]
+    [InlineData("--", false)]
+    [InlineData("-=-=-", false)]
+    [InlineData("--- text", false)]
+    public void ASeparatorLine_IsOnlyDashesOrOnlyEqualSigns(string line, bool expected) => Assert.Equal(expected, LogTextLine.IsSeparator(line));
 
     [Fact]
     public async Task ATextFileWithoutAnyTimestamp_IsDatedByItsLastWrite()
@@ -129,6 +192,7 @@ public sealed class LogSearchAdditionsTests : IDisposable
     [InlineData("12:00:00 no date", null)]
     [InlineData("2026/11/08 not iso", null)]
     [InlineData("2026-11-0", null)]
+    [InlineData("[2026-11-08 12:00:00.250 +01:00] msg", "2026-11-08T11:00:00.25+00:00")]
     public void ALeadingTimestamp_IsReadOnlyFromAnIsoDate(string line, string? expected) =>
         Assert.Equal(expected is null ? null : DateTimeOffset.Parse(expected, System.Globalization.CultureInfo.InvariantCulture), LogTextLine.LeadingTimestamp(line));
 

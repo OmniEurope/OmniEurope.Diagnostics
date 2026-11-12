@@ -45,6 +45,10 @@ Version 1.2.0 of the three packages.
 
 ### Changed
 
+- Plain-text `.log` files: a line starting with a date between brackets (`[2026-11-12 11:09:34.613 +01:00]`) opens an
+  entry as a bare ISO date does; the lines after it without a date continue its message instead of being entries of
+  their own; separator lines (only dashes or equal signs) are skipped; a level name after the date sets the level and a
+  word ending with a colon after it the category. A file without dates still gives one entry per line.
 - The performance texts "no sample" and "window" no longer speak of requests only, so they fit operations too
   (French: "Aucune mesure pour l'instant.", "Mesures : n, depuis le ... (UTC)."; English: "Nothing measured yet.",
   "Measurements: n, since ... (UTC).").

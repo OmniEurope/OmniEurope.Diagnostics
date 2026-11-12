@@ -40,7 +40,8 @@ internal sealed class LogReadResult
 /// left, so the budget always keeps the most recent events. Files are opened for asynchronous reading only and shared
 /// for writing and deleting, so the host's sink keeps writing, rolling and deleting them meanwhile. A JSON file's last
 /// line without its end of line is being written: it is left for the next read rather than counted unreadable. A
-/// <c>.log</c> file is plain text (<see cref="LogTextLine"/>): every non-empty line is an entry.
+/// <c>.log</c> file is plain text (<see cref="LogTextLine"/>): a line with a leading timestamp opens an entry, the lines
+/// after it without one continue its message, and separator lines are skipped.
 /// </summary>
 internal static class LogFileReader
 {
@@ -168,8 +169,13 @@ internal static class LogFileReader
 
         public bool Text { get; } = text;
 
-        /// <summary>The timestamp a text line without its own gets: the previous line's, at first the file's last write.</summary>
+        /// <summary>The timestamp a text line without its own gets: the previous entry's, at first the file's last write.</summary>
         public DateTimeOffset LastTimestamp { get; set; } = lastWrite;
+
+        /// <summary>The index, in the result, of the timestamped text entry the next line without a timestamp
+        /// continues: null before the first one of the text read, after a separator line and after a line read on its
+        /// own.</summary>
+        public int? OpenEntry { get; set; }
 
         public int UnreadableCount { get; set; }
 
@@ -181,7 +187,12 @@ internal static class LogFileReader
         var trimmed = line.TrimEnd((byte)'\r');
         if (trimmed.Span.Trim((byte)' ').IsEmpty)
             return;
-        var entry = file.Text ? TextEntry(trimmed.Span, file) : LogLineParser.Parse(trimmed);
+        if (file.Text)
+        {
+            AddTextLine(System.Text.Encoding.UTF8.GetString(trimmed.Span), lineNumber, file, result);
+            return;
+        }
+        var entry = LogLineParser.Parse(trimmed);
         if (entry is not null)
         {
             result.Entries.Add(entry with { File = file.Name, Line = lineNumber, Sequence = result.Entries.Count });
@@ -194,10 +205,29 @@ internal static class LogFileReader
             file.Lines.Add(number);
     }
 
-    private static LogEntry TextEntry(ReadOnlySpan<byte> line, FileState file)
+    /// <summary>
+    /// Reads one line of a plain-text file: a separator closes the open entry; a line without a timestamp continues
+    /// it, or stands alone, dated as the entry before it, when none is open (a file without timestamps, a read that
+    /// started inside an entry); a line with a timestamp opens the next entry.
+    /// </summary>
+    private static void AddTextLine(string line, int? lineNumber, FileState file, LogReadResult result)
     {
-        var entry = LogTextLine.Parse(System.Text.Encoding.UTF8.GetString(line), file.LastTimestamp);
+        if (LogTextLine.IsSeparator(line))
+        {
+            file.OpenEntry = null;
+            return;
+        }
+        var header = LogTextLine.ParseHeader(line);
+        if (header is null && file.OpenEntry is { } open)
+        {
+            var opened = result.Entries[open];
+            result.Entries[open] = opened with { Message = opened.Message + "\n" + line };
+            return;
+        }
+        var entry = header ?? LogTextLine.Standalone(line, file.LastTimestamp);
         file.LastTimestamp = entry.Timestamp;
-        return entry;
+        // Only a timestamped line opens an entry: a file without any timestamp keeps one entry per line.
+        file.OpenEntry = header is null ? null : result.Entries.Count;
+        result.Entries.Add(entry with { File = file.Name, Line = lineNumber, Sequence = result.Entries.Count });
     }
 }

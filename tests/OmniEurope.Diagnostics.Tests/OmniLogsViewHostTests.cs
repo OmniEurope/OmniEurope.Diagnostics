@@ -243,7 +243,7 @@ public sealed class OmniLogsViewHostTests : IDisposable
 
         view.Find("#omni-logs-file").Change("plain.log");
         view.Find("form[role=search]").Submit();
-        Eventually(view, () => Assert.Equal(["2026-11-08T12:00:00Z plain line"], Messages(view)));
+        Eventually(view, () => Assert.Equal(["plain line"], Messages(view)));
         Settle(view);
         Press(view, DownloadFile);
 

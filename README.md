@@ -272,7 +272,7 @@ The `OmniLogs` section of the host configuration, then `AddOmniLogs(o => ...)`, 
 | Setting | Default | Purpose |
 |---|---|---|
 | `Directory` | required, or the file logger's | The folder the log files are written to; relative to the content root. Only its own files are read. Left empty with `AddOmniFileLogging()`, it is the logger's folder. |
-| `FilePattern` | `*.json` | The log files of the folder (file-name wildcards, no path; several separated by `;`, `*.json;*.log`). With the logger's folder, `{FilePrefix}*.json`. A `.log` file is read as plain text: one entry per line, level Information, timestamped by the ISO date the line starts with, else the previous line's. |
+| `FilePattern` | `*.json` | The log files of the folder (file-name wildcards, no path; several separated by `;`, `*.json;*.log`). With the logger's folder, `{FilePrefix}*.json`. A `.log` file is read as plain text: a line starting with an ISO date, bare or between brackets (`[2026-11-12 11:09:34.613 +01:00]`), opens an entry; a level name after it (`Warning`, `[WRN]`, `Critical`...) sets its level (Information otherwise) and a word ending with a colon right after the level is its category; the lines after it without a date continue its message (a stack trace, a detail line), and lines made only of dashes or equal signs are skipped. A file without dates keeps one entry per line, dated by its last write. |
 | `RulesFile` | `omni-log-rules.json` | The rules file, inside the folder; never listed as a log, never purged. |
 | `PageSize` | `50` | Entries per page, 1 to 1000. |
 | `MaxBytesRead` | `16777216` (16 MiB) | Log text read per request, 4 KiB to 1 GiB: newest files first, a large file from its end; the page says when older entries were left out. |
