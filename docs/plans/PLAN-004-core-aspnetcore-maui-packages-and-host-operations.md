@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: EUPL-1.2 -->
 # PLAN-004 - Core, ASP.NET Core and MAUI packages, host-recorded operations, embeddable views
 
-Status: active (2026-11-12), target version 1.2.0 for the three packages.
+Status: implemented on develop (2026-11-12), target version 1.2.0 for the three packages. Proved in the MAUI sample over the WebView2 debugging port: operations in the performance view, logs view filters, details, rules and follow mode. Not yet observed: the Windows save dialog of the export, and the Windows CI job on GitHub.
 
 ## Why
 
