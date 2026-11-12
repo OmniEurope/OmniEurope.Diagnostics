@@ -142,6 +142,34 @@ reads the figures again in an interactive render mode or a Blazor Hybrid web vie
 <OmniPerformanceView />
 ```
 
+The logs are read in the same way by the embeddable `OmniLogsView`, an interactive, unstyled component for a Blazor
+Hybrid web view or any interactive render mode (it talks to the services directly: no HTTP, no query string, no
+script). It lists the journal and excluded tabs with their counts, the filters (file, minimum level, from and to read
+as UTC, text) with a button to apply them and one to clear them, one page of entries newest first (`LogsOptions.PageSize`),
+each entry's details (message, exception, properties) and a button to filter on its correlation id, the exclusion rules
+(add, enable, disable, delete) and the purge of old files, which first shows how many files it would delete and asks
+for a confirmation. A follow mode reads again whenever `ILogChanges` reports a change, and stops with the component.
+A failing service is shown as text, never thrown out of the component; static rendering draws the first page of the
+journal without any control.
+
+```csharp
+builder.Logging.AddOmniFileLogging(logFolder);                    // the files the view reads
+builder.Services.AddLocalization();
+builder.Services.AddOmniLogJournal(o => o.Directory = logFolder); // ILogJournal, ILogRuleStore, ILogChanges
+builder.Services.AddSingleton<ILogFileExport, MyLogFileExport>(); // optional: export and download
+```
+
+```razor
+@using OmniEurope.Diagnostics.Components
+
+<h1>Logs</h1>
+<OmniLogsView />
+```
+
+Exporting the selection (CSV, cells that a spreadsheet could run as a formula neutralised) and downloading the
+selected file go through the `ILogFileExport` the host registers (a save dialog on the desktop, say): the package
+registers none, and without one those two buttons are not drawn.
+
 ## .NET MAUI Blazor Hybrid (Windows): the MAUI package
 
 `OmniEurope.Diagnostics.Maui` (Windows only for now: it targets `net11.0-windows10.0.19041.0`, the platform it is
@@ -171,7 +199,7 @@ return builder.Build();
 - `ConfigureFileLogging`, `ConfigureLogs` and `ConfigurePerformance` on `OmniMauiDiagnosticsOptions` reach the
   options of the underlying services (retention, page size, instruments...).
 
-The pages are the host's own Razor components, as in the previous section (`OmniPerformanceView`). A runnable
+The pages are the host's own Razor components, as in the previous section (`OmniPerformanceView`, `OmniLogsView`). A runnable
 Windows sample, unpackaged, lives in `samples/OmniEurope.Diagnostics.Sample.Maui`; the MAUI projects have their own
 solution, `OmniEurope.Diagnostics.Maui.slnx` (workload `maui-windows`), so that `OmniEurope.Diagnostics.slnx` still
 builds anywhere.

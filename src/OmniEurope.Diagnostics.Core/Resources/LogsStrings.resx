@@ -113,4 +113,16 @@
   <data name="RefusedConfirm" xml:space="preserve"><value>Cochez la case de confirmation pour purger.</value></data>
   <data name="RefusedDays" xml:space="preserve"><value>Le nombre de jours doit être un entier d&apos;au moins 1.</value></data>
   <data name="RulesWriteFailed" xml:space="preserve"><value>Le fichier de règles n&apos;a pas pu être enregistré (dossier en lecture seule, disque plein ou fichier verrouillé) : l&apos;ancien est conservé.</value></data>
+  <data name="InvalidDate" xml:space="preserve"><value>La date saisie n&apos;est pas valide (année-mois-jour heure:minute, en UTC).</value></data>
+  <data name="ServiceFailed" xml:space="preserve"><value>L&apos;opération a échoué : {0}</value></data>
+  <data name="FileGone" xml:space="preserve"><value>Le fichier {0} n&apos;existe plus.</value></data>
+  <data name="Exported" xml:space="preserve"><value>Fichier transmis : {0}.</value></data>
+  <data name="FollowingLive" xml:space="preserve"><value>Suivi en direct : la liste se met à jour dès que les fichiers changent.</value></data>
+  <data name="Loading" xml:space="preserve"><value>Lecture des fichiers en cours…</value></data>
+  <data name="Refresh" xml:space="preserve"><value>Actualiser</value></data>
+  <data name="Hide" xml:space="preserve"><value>Masquer</value></data>
+  <data name="PurgeAsk" xml:space="preserve"><value>Supprimer définitivement {1} fichiers ({2}) datant de plus de {0} jours ?</value></data>
+  <data name="ConfirmPurge" xml:space="preserve"><value>Confirmer la suppression</value></data>
+  <data name="Cancel" xml:space="preserve"><value>Annuler</value></data>
+  <data name="RuleNotFound" xml:space="preserve"><value>Cette règle n&apos;existe plus.</value></data>
 </root>

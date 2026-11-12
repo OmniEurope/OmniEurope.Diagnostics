@@ -37,9 +37,17 @@ Version 1.2.0 of the three packages.
   underlying options. A runnable, unpackaged sample lives in `samples/OmniEurope.Diagnostics.Sample.Maui`; the MAUI
   projects have their own solution, `OmniEurope.Diagnostics.Maui.slnx`, built by a Windows job of continuous
   integration, which also publishes the package after Core.
+- `OmniLogsView`: the logs as an embeddable, unstyled and interactive Blazor component (Blazor Hybrid or any
+  interactive render mode, no HTTP and no script): journal and excluded tabs, filters, pages, entry details, "same
+  request", exclusion rules, purge with a confirmation step, follow mode on `ILogChanges`, and, when the host registers
+  an `ILogFileExport`, the CSV export of the selection and the download of the selected file. Service failures are
+  shown as text.
 
 ### Changed
 
+- The performance texts "no sample" and "window" no longer speak of requests only, so they fit operations too
+  (French: "Aucune mesure pour l'instant.", "Mesures : n, depuis le ... (UTC)."; English: "Nothing measured yet.",
+  "Measurements: n, since ... (UTC).").
 - `AddOmniPerformanceCollector` moves to `PerformanceCollectorServiceCollectionExtensions` (Core package); called as an
   extension method, nothing changes. `PerformanceServiceCollectionExtensions.ConfigurationSection` and
   `LogsServiceCollectionExtensions.ConfigurationSection` stay, equal to the Core constants.

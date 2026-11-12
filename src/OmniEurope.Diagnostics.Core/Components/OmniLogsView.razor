@@ -1,0 +1,361 @@
+@* SPDX-License-Identifier: EUPL-1.2 *@
+@namespace OmniEurope.Diagnostics.Components
+@using OmniEurope.Diagnostics.Logs
+@* The journal of the host's Serilog files as a fragment: no document, no stylesheet, no script, semantic HTML without
+   a single class or style, under the host's own heading, layout and authorization. Every control (tabs, filters,
+   follow mode, export, rules, purge) is drawn only where it can be clicked, an interactive render mode or a Blazor
+   Hybrid web view; static rendering shows the first page of the journal. Every value from a log is written as text,
+   HTML-encoded by the renderer. *@
+<p>@L["SourceBefore"] <code>@LogFolder.Source</code> @L["SourceAfter"]</p>
+@if (_message is { } message)
+{
+    <p role="@(message.IsError ? "alert" : "status")">@message.Text</p>
+}
+@if (Interactive)
+{
+    <nav aria-label="@L["Tabs"]">
+        <p>
+            @if (_tab == LogsViewTab.Journal)
+            {
+                <strong aria-current="page">@Tab("TabJournal", _result.JournalCount)</strong>
+            }
+            else
+            {
+                <button type="button" @onclick="() => ShowTab(LogsViewTab.Journal)">@Tab("TabJournal", _result.JournalCount)</button>
+            }
+            @(" ")
+            @if (_tab == LogsViewTab.Excluded)
+            {
+                <strong aria-current="page">@Tab("TabExcluded", _result.ExcludedCount)</strong>
+            }
+            else
+            {
+                <button type="button" @onclick="() => ShowTab(LogsViewTab.Excluded)">@Tab("TabExcluded", _result.ExcludedCount)</button>
+            }
+            @(" ")
+            @if (_tab == LogsViewTab.Rules)
+            {
+                <strong aria-current="page">@Tab("TabRules", _result.Rules.Count)</strong>
+            }
+            else
+            {
+                <button type="button" @onclick="() => ShowTab(LogsViewTab.Rules)">@Tab("TabRules", _result.Rules.Count)</button>
+            }
+        </p>
+    </nav>
+}
+@if (_loaded)
+{
+    @if (_files.Count == 0)
+    {
+        <p>@L["NoFilesBefore"] <code>@LogFolder.DirectoryLabel</code>@L["NoFilesAfter"]</p>
+    }
+    @if (_result.Truncated)
+    {
+        <p>@Format("Truncated", LogsFormat.Size(Options.Value.MaxBytesRead, L))</p>
+    }
+    @if (_result.RulesError is not null)
+    {
+        <p>@L["RulesUnreadableBefore"] <code>@LogFolder.RulesLabel</code> @L["RulesUnreadableAfter"]</p>
+    }
+    @foreach (var issue in _result.Issues)
+    {
+        <p>@L["FileIssueBefore"] <code>@issue.File</code> @IssueText(issue)</p>
+    }
+}
+
+@if (_tab == LogsViewTab.Rules)
+{
+    <section aria-labelledby="omni-logs-rules">
+        <h2 id="omni-logs-rules">@L["RulesTitle"]</h2>
+        <p>@L["RulesScope"] <code>@LogFolder.RulesLabel</code>.</p>
+        <form @onsubmit="AddRuleAsync" @onsubmit:preventDefault aria-labelledby="omni-logs-rule-new">
+            <fieldset>
+                <legend id="omni-logs-rule-new">@L["NewRule"]</legend>
+                <p>
+                    <label for="omni-logs-pattern">@L["PatternLabel"]</label><br />
+                    <input id="omni-logs-pattern" required maxlength="@LogRule.MaxLength" size="50" @bind="_pattern" />
+                </p>
+                <p>
+                    <label for="omni-logs-category">@L["CategoryLabel"]</label><br />
+                    <input id="omni-logs-category" maxlength="@LogRule.MaxLength" size="50" @bind="_category" />
+                </p>
+                <p><button type="submit">@L["AddRule"]</button></p>
+            </fieldset>
+        </form>
+
+        <h3>@L["ExistingRules"]</h3>
+        @if (_result.Rules.Count == 0)
+        {
+            <p>@L["NoRules"]</p>
+        }
+        else
+        {
+            <table>
+                <thead>
+                    <tr>
+                        <th scope="col">@L["PatternColumn"]</th>
+                        <th scope="col">@L["Category"]</th>
+                        <th scope="col">@L["StateColumn"]</th>
+                        <th scope="col">@L["Actions"]</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var rule in _result.Rules)
+                    {
+                        <tr>
+                            <td><code>@rule.Pattern</code></td>
+                            <td>@if (rule.Category is not null) { <code>@rule.Category</code> } else { @L["AllCategories"] }</td>
+                            <td>@(rule.Enabled ? L["Active"] : L["Inactive"])</td>
+                            <td>
+                                <button type="button" @onclick="() => ToggleRuleAsync(rule)">@(rule.Enabled ? L["Disable"] : L["Enable"])</button>
+                                @(" ")
+                                <button type="button" @onclick="() => DeleteRuleAsync(rule)">@L["Delete"]</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+
+        <h3 id="omni-logs-purge">@L["PurgeTitle"]</h3>
+        <p>
+            <label for="omni-logs-days">@L["PurgeDaysBefore"]</label>
+            <input id="omni-logs-days" type="number" min="1" max="@MaxPurgeDays" size="4" disabled="@(_purgeAsk is not null)" @bind="_purgeDays" /> @L["PurgeDaysAfter"]
+        </p>
+        @if (_purgeAsk is { } ask)
+        {
+            <p role="alert">@Format("PurgeAsk", ask.Days, LogsFormat.Count(ask.Count), LogsFormat.Size(ask.Bytes, L))</p>
+            <p>
+                <button type="button" @onclick="() => PurgeAsync(ask)">@L["ConfirmPurge"]</button>
+                @(" ")
+                <button type="button" @onclick="CancelPurge">@L["Cancel"]</button>
+            </p>
+        }
+        else
+        {
+            <p><button type="button" @onclick="AskPurge">@L["Purge"]</button></p>
+        }
+        @if (_purged is { } purged)
+        {
+            <p role="status">@Format("Purged", LogsFormat.Count(purged.Deleted))</p>
+            @if (purged.Failed > 0)
+            {
+                <p role="alert">@Format("PurgeFailed", LogsFormat.Count(purged.Failed))</p>
+            }
+        }
+    </section>
+}
+else
+{
+    @if (_tab == LogsViewTab.Excluded)
+    {
+        <p>@L["ExcludedScope"]</p>
+    }
+    @if (Interactive)
+    {
+        <form @onsubmit="ApplyAsync" @onsubmit:preventDefault role="search" aria-label="@L["Filters"]">
+            <fieldset>
+                <legend>@L["Filters"]</legend>
+                <p>
+                    <label for="omni-logs-file">@L["File"]</label>
+                    <select id="omni-logs-file" @bind="_filters.File">
+                        <option value="">@L["AllFiles"]</option>
+                        @foreach (var file in _files)
+                        {
+                            <option value="@file.Name">@file.Name</option>
+                        }
+                    </select>
+                </p>
+                <p>
+                    <label for="omni-logs-level">@L["Level"]</label>
+                    <select id="omni-logs-level" @bind="_filters.Level">
+                        <option value="">@L["AllLevels"]</option>
+                        @foreach (var level in Enum.GetValues<LogSeverity>())
+                        {
+                            <option value="@level">@Severity(level)</option>
+                        }
+                    </select>
+                </p>
+                <p>
+                    <label for="omni-logs-from">@L["From"]</label>
+                    <input id="omni-logs-from" type="datetime-local" value="@_filters.From" @onchange="change => _filters.From = change.Value?.ToString() ?? string.Empty" />
+                    <label for="omni-logs-to">@L["To"]</label>
+                    <input id="omni-logs-to" type="datetime-local" value="@_filters.To" @onchange="change => _filters.To = change.Value?.ToString() ?? string.Empty" />
+                </p>
+                <p>
+                    <label for="omni-logs-text">@L["Text"]</label>
+                    <input id="omni-logs-text" type="search" placeholder="@L["TextPlaceholder"]" size="40" @bind="_filters.Text" />
+                </p>
+                <p>
+                    <button type="submit">@L["Filter"]</button>
+                    @(" ")
+                    <button type="button" @onclick="ResetAsync">@L["ClearFilters"]</button>
+                </p>
+            </fieldset>
+        </form>
+    }
+    <p>
+        @Format("ReadAt", _readAt.UtcDateTime.ToString(L["TimeFormat"], CultureInfo.InvariantCulture))
+        @if (Interactive)
+        {
+            @(" ")
+            <button type="button" @onclick="RefreshAsync">@L["Refresh"]</button>
+            @(" ")
+            <label><input type="checkbox" @bind="_follow" @bind:after="FollowChangedAsync" /> @L["Follow"]</label>
+            @if (_follow)
+            {
+                @(" ")
+                @L["FollowingLive"]
+            }
+            @if (_export is { } export)
+            {
+                @(" ")
+                <button type="button" @onclick="() => ExportCsvAsync(export)">@L["Export"]</button>
+                @if (_applied.File is { } selected)
+                {
+                    @(" ")
+                    <button type="button" @onclick="() => DownloadAsync(export, selected)">@L["Download"]</button>
+                }
+            }
+        }
+    </p>
+
+    <section aria-labelledby="omni-logs-entries">
+        <h2 id="omni-logs-entries">@L["Entries"]</h2>
+        @if (!_loaded)
+        {
+            @if (_loading)
+            {
+                <p>@L["Loading"]</p>
+            }
+        }
+        else if (CurrentRows.Count == 0)
+        {
+            <p>@L["NoEntries"]</p>
+        }
+        else
+        {
+            <p>@Format("Range", LogsFormat.Count(Offset + 1), LogsFormat.Count(Offset + PageRows.Count()), LogsFormat.Count(CurrentRows.Count))</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th scope="col">@L["Date"]</th>
+                        <th scope="col">@L["LevelColumn"]</th>
+                        <th scope="col">@L["Category"]</th>
+                        <th scope="col">@L["Message"]</th>
+                        <th scope="col">@(_tab == LogsViewTab.Excluded ? L["Rule"] : L["Correlation"])</th>
+                        @if (Interactive)
+                        {
+                            <th scope="col">@L["Actions"]</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in PageRows)
+                    {
+                        var entry = row.Entry;
+                        var open = _expanded.Contains(KeyOf(entry));
+                        <tr>
+                            <td><time datetime="@LogsFormat.Iso(entry.Timestamp)">@LogsFormat.Date(entry.Timestamp, L)</time></td>
+                            <td>@if (entry.Level >= LogSeverity.Error) { <strong>@Severity(entry.Level)</strong> } else { @Severity(entry.Level) }</td>
+                            <td>@if (entry.Category is not null) { <code>@entry.Category</code> }</td>
+                            <td>@LogsFormat.Preview(entry.Message)</td>
+                            <td>@if ((row.Rule?.Pattern ?? entry.CorrelationId) is { } marker) { <code>@marker</code> }</td>
+                            @if (Interactive)
+                            {
+                                <td>
+                                    <button type="button" aria-expanded="@(open ? "true" : "false")" @onclick="() => ToggleDetail(entry)">@(open ? L["Hide"] : L["View"])</button>
+                                    @if (row.Rule is null)
+                                    {
+                                        @(" ")
+                                        <button type="button" @onclick="() => Exclude(entry)">@L["Exclude"]</button>
+                                    }
+                                </td>
+                            }
+                        </tr>
+                        @if (open)
+                        {
+                            <tr>
+                                <td colspan="6">
+                                    <dl>
+                                        <dt>@L["Date"]</dt>
+                                        <dd><time datetime="@LogsFormat.Iso(entry.Timestamp)">@LogsFormat.Date(entry.Timestamp, L) @L["Utc"]</time></dd>
+                                        <dt>@L["LevelColumn"]</dt>
+                                        <dd>@Severity(entry.Level)</dd>
+                                        @if (entry.Category is not null)
+                                        {
+                                            <dt>@L["Category"]</dt>
+                                            <dd><code>@entry.Category</code></dd>
+                                        }
+                                        @if (entry.CorrelationId is { } correlation)
+                                        {
+                                            <dt>@L["Correlation"]</dt>
+                                            <dd><code>@correlation</code> (<button type="button" @onclick="() => SameRequestAsync(correlation)">@L["SameRequest"]</button>)</dd>
+                                        }
+                                        @if (entry.Request is not null)
+                                        {
+                                            <dt>@L["Request"]</dt>
+                                            <dd><code>@entry.Request</code></dd>
+                                        }
+                                        <dt>@L["File"]</dt>
+                                        <dd><code>@entry.File</code>@(entry.Line is { } line ? Format("LineNumber", LogsFormat.Count(line)) : "")</dd>
+                                        @if (row.Rule is { } rule)
+                                        {
+                                            <dt>@L["Rule"]</dt>
+                                            <dd><code>@rule.Pattern</code></dd>
+                                        }
+                                    </dl>
+                                    <h3>@L["Message"]</h3>
+                                    <pre>@entry.Message</pre>
+                                    @if (entry.Exception is not null)
+                                    {
+                                        <h3>@L["Exception"]</h3>
+                                        <pre>@entry.Exception</pre>
+                                    }
+                                    @if (entry.Properties.Count > 0)
+                                    {
+                                        <h3>@L["Properties"]</h3>
+                                        <table>
+                                            <thead><tr><th scope="col">@L["Name"]</th><th scope="col">@L["Value"]</th></tr></thead>
+                                            <tbody>
+                                                @foreach (var property in entry.Properties)
+                                                {
+                                                    <tr><td><code>@property.Key</code></td><td>@property.Value</td></tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+            @if (Interactive)
+            {
+                <nav aria-label="@L["Pagination"]">
+                    <p>
+                        @if (_page > 1)
+                        {
+                            <button type="button" @onclick="() => _page--">@L["Previous"]</button>
+                        }
+                        else
+                        {
+                            @L["Previous"]
+                        }
+                        | @Format("PageOf", LogsFormat.Count(_page), LogsFormat.Count(PageCount)) |
+                        @if (_page < PageCount)
+                        {
+                            <button type="button" @onclick="() => _page++">@L["Next"]</button>
+                        }
+                        else
+                        {
+                            @L["Next"]
+                        }
+                    </p>
+                </nav>
+            }
+        }
+    </section>
+}

@@ -45,7 +45,7 @@ public sealed class PerformancePageTests : IDisposable
         var page = _context.Render<PerformancePage>();
 
         Assert.Contains("Depuis le 2026-09-29 08:35:00 (UTC), les plus lents d'abord.", page.Markup);
-        Assert.Contains("Requêtes mesurées : 3, depuis le 2026-10-06 08:30:00 (UTC).", page.Markup);
+        Assert.Contains("Mesures : 3, depuis le 2026-10-06 08:30:00 (UTC).", page.Markup);
         Assert.DoesNotContain("Plafond atteint", page.Markup);
         var tables = page.FindAll("table");
         Assert.Equal(2, tables.Count);
@@ -65,7 +65,7 @@ public sealed class PerformancePageTests : IDisposable
 
         var page = _context.Render<PerformancePage>();
 
-        Assert.Contains("Aucune requête mesurée pour l'instant.", page.Markup);
+        Assert.Contains("Aucune mesure pour l'instant.", page.Markup);
         Assert.Empty(page.FindAll("table"));
     }
 
@@ -82,7 +82,7 @@ public sealed class PerformancePageTests : IDisposable
 
         var page = _context.Render<PerformancePage>();
 
-        Assert.Contains("Cap reached: the oldest requests no longer count in these percentiles (the slowest calls list is not affected).", page.Markup);
+        Assert.Contains("Cap reached: the oldest measurements no longer count in these percentiles (the slowest calls list is not affected).", page.Markup);
         Assert.Equal(["Slowest calls", "By route"], page.FindAll("h2").Select(h => h.TextContent));
     }
 

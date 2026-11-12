@@ -113,4 +113,16 @@
   <data name="RefusedConfirm" xml:space="preserve"><value>Tick the confirmation box to purge.</value></data>
   <data name="RefusedDays" xml:space="preserve"><value>The number of days must be a whole number of at least 1.</value></data>
   <data name="RulesWriteFailed" xml:space="preserve"><value>The rules file could not be saved (read-only folder, full disk or locked file): the old one is kept.</value></data>
+  <data name="InvalidDate" xml:space="preserve"><value>The date is not valid (year-month-day hour:minute, in UTC).</value></data>
+  <data name="ServiceFailed" xml:space="preserve"><value>The operation failed: {0}</value></data>
+  <data name="FileGone" xml:space="preserve"><value>The file {0} no longer exists.</value></data>
+  <data name="Exported" xml:space="preserve"><value>File handed over: {0}.</value></data>
+  <data name="FollowingLive" xml:space="preserve"><value>Following live: the list updates as soon as the files change.</value></data>
+  <data name="Loading" xml:space="preserve"><value>Reading the files…</value></data>
+  <data name="Refresh" xml:space="preserve"><value>Refresh</value></data>
+  <data name="Hide" xml:space="preserve"><value>Hide</value></data>
+  <data name="PurgeAsk" xml:space="preserve"><value>Delete {1} files ({2}) older than {0} days for good?</value></data>
+  <data name="ConfirmPurge" xml:space="preserve"><value>Confirm the deletion</value></data>
+  <data name="Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="RuleNotFound" xml:space="preserve"><value>That rule no longer exists.</value></data>
 </root>

@@ -5,10 +5,10 @@
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
   <data name="Title" xml:space="preserve"><value>Performances du site</value></data>
-  <data name="Window" xml:space="preserve"><value>Requêtes mesurées : {0}, depuis le {1} (UTC).</value></data>
-  <data name="WindowScope" xml:space="preserve"><value>Mesures conservées en mémoire, remises à zéro au redémarrage du site.</value></data>
-  <data name="Truncated" xml:space="preserve"><value>Plafond atteint : les requêtes les plus anciennes ne comptent plus dans ces centiles (la liste des appels les plus lents n'est pas concernée).</value></data>
-  <data name="NoSamples" xml:space="preserve"><value>Aucune requête mesurée pour l'instant.</value></data>
+  <data name="Window" xml:space="preserve"><value>Mesures : {0}, depuis le {1} (UTC).</value></data>
+  <data name="WindowScope" xml:space="preserve"><value>Mesures conservées en mémoire, remises à zéro au redémarrage de l'application.</value></data>
+  <data name="Truncated" xml:space="preserve"><value>Plafond atteint : les mesures les plus anciennes ne comptent plus dans ces centiles (la liste des appels les plus lents n'est pas concernée).</value></data>
+  <data name="NoSamples" xml:space="preserve"><value>Aucune mesure pour l'instant.</value></data>
   <data name="Slowest" xml:space="preserve"><value>Appels les plus lents</value></data>
   <data name="SlowestScope" xml:space="preserve"><value>Depuis le {0} (UTC), les plus lents d'abord.</value></data>
   <data name="ByRoute" xml:space="preserve"><value>Par route</value></data>

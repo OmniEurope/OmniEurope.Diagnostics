@@ -61,15 +61,15 @@ public sealed class OmniPerformanceViewTests : IDisposable
         UseCulture("en-GB");
         _context.SetRendererInfo(new RendererInfo("WebView", isInteractive: true));
         var view = _context.Render<OmniPerformanceView>();
-        Assert.Contains("No request measured yet.", view.Markup, StringComparison.Ordinal);
+        Assert.Contains("Nothing measured yet.", view.Markup, StringComparison.Ordinal);
 
         _recorder.Recorder.RecordOperation("Load screen", TimeSpan.FromMilliseconds(40));
-        Assert.Contains("No request measured yet.", view.Markup, StringComparison.Ordinal);
+        Assert.Contains("Nothing measured yet.", view.Markup, StringComparison.Ordinal);
         var button = view.Find("button");
         Assert.Equal(("button", "Refresh"), (button.GetAttribute("type"), button.TextContent));
         button.Click();
 
-        Assert.DoesNotContain("No request measured yet.", view.Markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("Nothing measured yet.", view.Markup, StringComparison.Ordinal);
         Assert.Equal(["40 ms", "Operation", "Load screen", "Succeeded"],
             view.FindAll("table")[0].QuerySelectorAll("tbody td").Take(4).Select(td => td.TextContent));
     }
