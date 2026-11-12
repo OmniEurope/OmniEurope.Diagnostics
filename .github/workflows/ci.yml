@@ -134,7 +134,9 @@ jobs:
       - name: Install the MAUI Windows workload
         run: dotnet workload install maui-windows
       - name: Restore
-        run: dotnet restore OmniEurope.Diagnostics.Maui.slnx
+        # Restored in Release: only the Release build of the sample needs the win-x64 runtime pack, and a Debug
+        # restore does not download it (NETSDK1112 at the build).
+        run: dotnet restore OmniEurope.Diagnostics.Maui.slnx -p:Configuration=Release
       - name: Build
         run: dotnet build OmniEurope.Diagnostics.Maui.slnx --configuration Release --no-restore
       - name: Tests
