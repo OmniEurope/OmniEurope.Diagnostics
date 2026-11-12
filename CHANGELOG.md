@@ -28,9 +28,17 @@ Version 1.2.0 of both packages.
   Razor components or antiforgery; `AddOmniLogs()` builds on it. Without a registered `IHostEnvironment`, a relative
   log folder is relative to `AppContext.BaseDirectory`.
 - `ILogFileExport`: the abstraction a host implements to save or offer an exported log file.
+- `OmniLogsView`: the logs as an embeddable, unstyled and interactive Blazor component (Blazor Hybrid or any
+  interactive render mode, no HTTP and no script): journal and excluded tabs, filters, pages, entry details, "same
+  request", exclusion rules, purge with a confirmation step, follow mode on `ILogChanges`, and, when the host registers
+  an `ILogFileExport`, the CSV export of the selection and the download of the selected file. Service failures are
+  shown as text.
 
 ### Changed
 
+- The performance texts "no sample" and "window" no longer speak of requests only, so they fit operations too
+  (French: "Aucune mesure pour l'instant.", "Mesures : n, depuis le ... (UTC)."; English: "Nothing measured yet.",
+  "Measurements: n, since ... (UTC).").
 - `AddOmniPerformanceCollector` moves to `PerformanceCollectorServiceCollectionExtensions` (Core package); called as an
   extension method, nothing changes. `PerformanceServiceCollectionExtensions.ConfigurationSection` and
   `LogsServiceCollectionExtensions.ConfigurationSection` stay, equal to the Core constants.

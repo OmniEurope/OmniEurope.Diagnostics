@@ -34,12 +34,7 @@ internal sealed record LogsLinks(string BasePath)
     /// The text a rule for <paramref name="entry"/> starts from: the template's literal text before its first hole,
     /// which every message of that template contains, else the start of the message; 60 characters at most.
     /// </summary>
-    internal static string SuggestedPattern(LogEntry entry)
-    {
-        var literal = entry.Template is { } template ? template.Split('{')[0].Trim() : "";
-        var text = literal.Length > 0 ? literal : entry.Message.Split('\n')[0].Trim();
-        return text.Length <= 60 ? text : text[..60].TrimEnd();
-    }
+    internal static string SuggestedPattern(LogEntry entry) => LogRulePattern.Suggest(entry);
 }
 
 /// <summary>What the journal and excluded tabs render.</summary>
