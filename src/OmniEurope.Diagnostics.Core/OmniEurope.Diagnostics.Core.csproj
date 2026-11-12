@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+  <PropertyGroup>
+    <!-- Every public member carries an XML doc (CS1591 is an error under TreatWarningsAsErrors). -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- The types keep the namespaces they had in OmniEurope.Diagnostics, so a host only recompiles, and the
+         localized texts resolve under the same root namespace. -->
+    <RootNamespace>OmniEurope.Diagnostics</RootNamespace>
+    <PackageId>OmniEurope.Diagnostics.Core</PackageId>
+    <Version>1.2.0</Version>
+    <Authors>OmniEurope contributors</Authors>
+    <Company>OmniEurope</Company>
+    <Description>The host-agnostic part of OmniEurope.Diagnostics, without the ASP.NET Core shared framework: the in-process performance recorder (requests heard from the ASP.NET Core metrics when there are any, operations the host records itself or publishes on its own histograms), an embeddable unstyled Blazor view of its figures, a file logger writing compact Serilog JSON without depending on Serilog, and the services that read, filter and watch the logs. Usable in a Blazor Hybrid application.</Description>
+    <PackageTags>blazor;maui;hybrid;performance;diagnostics;logs;logging;serilog;clef;eupl</PackageTags>
+    <PackageLicenseExpression>EUPL-1.2</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryType>git</RepositoryType>
+    <RepositoryUrl>https://github.com/OmniEurope/OmniEurope.Diagnostics</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/OmniEurope/OmniEurope.Diagnostics</PackageProjectUrl>
+    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+    <IsPackable>true</IsPackable>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <!-- The texts of Resources/*Strings.resx are French; English ships as a satellite. -->
+    <NeutralLanguage>fr</NeutralLanguage>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Packages, never the Microsoft.AspNetCore.App shared framework: a desktop or Blazor Hybrid host
+         references this package without carrying ASP.NET Core. -->
+    <PackageReference Include="Microsoft.AspNetCore.Components.Web" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Localization" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+  </ItemGroup>
+</Project>

@@ -4,8 +4,36 @@ Notable changes to this project are documented here, following the Keep a Change
 
 ## [Unreleased]
 
+Version 1.2.0 of both packages.
+
+### Added
+
+- `OmniEurope.Diagnostics.Core` package, without the ASP.NET Core shared framework (Microsoft packages only), usable
+  in a Blazor Hybrid application: the performance recorder, its options and summaries, the file logger, the log
+  reading services and their texts move there, namespaces unchanged. `OmniEurope.Diagnostics` keeps the pages,
+  endpoints and antiforgery and depends on it.
+- Operations timed by the host: `RequestPerformanceRecorder.RecordOperation(name, duration, succeeded)` and the
+  `StartOperation(name)` timing scope (`OperationTiming`, `Fail()`), sharing the window, the slowest list, the memory
+  limit and the change signal with the requests, never filtered by `RouteFilter`. An operation is a
+  `RequestTimingSample` with an empty `Method` and a `StatusCode` of 0 or 1; `IsOperation` and `Succeeded` read it,
+  `RouteTimingSummary.IsOperation` too.
+- `PerformanceOptions.Instruments`: the host's own histograms (`PerformanceInstrument`: meter, histogram, name tag),
+  heard whatever their meter's scope, in seconds (`s`) or milliseconds (`ms`), failed on an `error.type` tag or an
+  `outcome` of `failure` or `error`.
+- `RequestPerformanceRecorder.Start()`: starts listening without a host (a .NET MAUI application runs no hosted
+  service); idempotent, called by `StartAsync`.
+- `OmniPerformanceView`: the figures of the performance page as an embeddable, unstyled Blazor fragment with a refresh
+  button in interactive rendering; an operation shows its outcome. The performance page renders through it.
+- `AddOmniLogJournal()`: the log reading services (`ILogJournal`, `ILogRuleStore`, `ILogChanges`) without pages,
+  Razor components or antiforgery; `AddOmniLogs()` builds on it. Without a registered `IHostEnvironment`, a relative
+  log folder is relative to `AppContext.BaseDirectory`.
+- `ILogFileExport`: the abstraction a host implements to save or offer an exported log file.
+
 ### Changed
 
+- `AddOmniPerformanceCollector` moves to `PerformanceCollectorServiceCollectionExtensions` (Core package); called as an
+  extension method, nothing changes. `PerformanceServiceCollectionExtensions.ConfigurationSection` and
+  `LogsServiceCollectionExtensions.ConfigurationSection` stay, equal to the Core constants.
 - File logger: without `FileLoggingOptions.Filter`, the write path no longer builds the filter candidate for each entry.
 - Continuous integration installs the ASP.NET Core runtime of the older target with a `dotnet-install.sh` pinned to a
   commit of the official install scripts and checked against its SHA-256.

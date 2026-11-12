@@ -1,21 +1,6 @@
 // SPDX-License-Identifier: EUPL-1.2
 namespace OmniEurope.Diagnostics.Logs;
 
-/// <summary>Selects read entries for the journal and the excluded tab, newest first.</summary>
-internal static class LogSelection
-{
-    /// <summary>The entries <paramref name="search"/> accepts, newest first, each with the first enabled rule that
-    /// matches it, or none.</summary>
-    public static List<LogRow> Rows(IEnumerable<LogEntry> entries, IReadOnlyList<LogRule> rules, LogSearch search)
-    {
-        var enabled = rules.Where(rule => rule.Enabled).ToList();
-        return entries.OrderByDescending(entry => entry.Timestamp).ThenByDescending(entry => entry.Sequence)
-            .Where(search.Accepts)
-            .Select(entry => new LogRow(entry, enabled.FirstOrDefault(candidate => candidate.Matches(entry))))
-            .ToList();
-    }
-}
-
 /// <summary>The links every page shares, from the address the host mapped the pages on.</summary>
 /// <param name="BasePath">The journal's path, the request's path base included (<c>/logs</c>).</param>
 internal sealed record LogsLinks(string BasePath)

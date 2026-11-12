@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/OmniEurope.Diagnostics/OmniEurope.Diagnostics.csproj" />
+    <Project Path="src/OmniEurope.Diagnostics.Core/OmniEurope.Diagnostics.Core.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/OmniEurope.Diagnostics.Tests/OmniEurope.Diagnostics.Tests.csproj" />

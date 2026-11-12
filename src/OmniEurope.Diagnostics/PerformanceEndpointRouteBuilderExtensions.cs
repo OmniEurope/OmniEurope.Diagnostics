@@ -20,7 +20,7 @@ public static class PerformanceEndpointRouteBuilderExtensions
     /// <param name="endpoints">The host's endpoints.</param>
     /// <param name="pattern">The page's address, <see cref="DefaultPattern"/> by default.</param>
     /// <exception cref="InvalidOperationException">The host registered the collector alone
-    /// (<see cref="Microsoft.Extensions.DependencyInjection.PerformanceServiceCollectionExtensions.AddOmniPerformanceCollector"/>)
+    /// (<see cref="Microsoft.Extensions.DependencyInjection.PerformanceCollectorServiceCollectionExtensions.AddOmniPerformanceCollector"/>)
     /// or nothing at all: the page would fail on its first request, so mapping it fails at startup.</exception>
     public static RouteHandlerBuilder MapOmniPerformance(this IEndpointRouteBuilder endpoints, string pattern = DefaultPattern)
     {

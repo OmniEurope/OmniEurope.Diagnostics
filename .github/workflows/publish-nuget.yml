@@ -1,6 +1,6 @@
 name: Publish NuGet
 
-# A published GitHub release pushes to NuGet.org the very package CI validated for the release commit:
+# A published GitHub release pushes to NuGet.org the very packages CI validated for the release commit:
 # nothing is rebuilt here. Authentication is NuGet trusted publishing (OIDC), no long-lived API key.
 
 on:
@@ -47,15 +47,26 @@ jobs:
           TAG: ${{ github.event.release.tag_name }}
         run: |
           $version = $env:TAG -replace '^v', ''
-          $package = Get-ChildItem artifacts/packages/*.nupkg | Select-Object -First 1
-          $expected = "OmniEurope.Diagnostics.$version.nupkg"
-          if (-not $package -or $package.Name -ne $expected) { throw "Expected $expected for tag $env:TAG, found $($package.Name)." }
-          if (-not (Test-Path "artifacts/packages/OmniEurope.Diagnostics.$version.snupkg")) { throw 'The symbol package is missing.' }
-          "package_path=$($package.FullName)" >> $env:GITHUB_OUTPUT
+          # Core first: the ASP.NET Core package depends on it.
+          $paths = foreach ($id in 'OmniEurope.Diagnostics.Core', 'OmniEurope.Diagnostics') {
+            $expected = "artifacts/packages/$id.$version.nupkg"
+            if (-not (Test-Path $expected)) { throw "Expected $id.$version.nupkg for tag $env:TAG, found $((Get-ChildItem artifacts/packages/*.nupkg).Name -join ', ')." }
+            if (-not (Test-Path "artifacts/packages/$id.$version.snupkg")) { throw "The symbol package of $id is missing." }
+            (Resolve-Path $expected).Path
+          }
+          "package_paths=$($paths -join ';')" >> $env:GITHUB_OUTPUT
       - name: Authenticate to NuGet.org
         id: login
         uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1
         with:
           user: ${{ secrets.NUGET_USER }}
-      - name: Publish the package and its symbols to NuGet.org
-        run: dotnet nuget push '${{ steps.package.outputs.package_path }}' --api-key '${{ steps.login.outputs.NUGET_API_KEY }}' --source https://api.nuget.org/v3/index.json --skip-duplicate
+      - name: Publish the packages and their symbols to NuGet.org
+        shell: pwsh
+        env:
+          PACKAGE_PATHS: ${{ steps.package.outputs.package_paths }}
+          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
+        run: |
+          foreach ($path in $env:PACKAGE_PATHS.Split(';')) {
+            dotnet nuget push $path --api-key $env:NUGET_API_KEY --source https://api.nuget.org/v3/index.json --skip-duplicate
+            if ($LASTEXITCODE -ne 0) { throw "Publishing $path failed." }
+          }

@@ -1,8 +1,9 @@
 @* SPDX-License-Identifier: EUPL-1.2 *@
 @namespace OmniEurope.Diagnostics.Components
-@* The page MapOmniPerformance answers with: a complete HTML document, no stylesheet, no script, the figures in
-   semantic HTML without a single class or style. They are read once per request; reloading the page reads them
-   again. A host that wants its own look renders RequestPerformanceRecorder.Summarize() itself. *@
+@* The page MapOmniPerformance answers with: a complete HTML document, no stylesheet, no script, the figures of
+   OmniPerformanceView in semantic HTML without a single class or style. The page is rendered statically, once per
+   request; reloading it reads the figures again. A host that wants its own look places OmniPerformanceView in its
+   own page, or renders RequestPerformanceRecorder.Summarize() itself. *@
 <!DOCTYPE html>
 <html lang="@Language">
 <head>
@@ -14,98 +15,7 @@
 <body>
     <main>
         <h1>@L["Title"]</h1>
-        <p>@L["WindowScope"]</p>
-        @if (_summary.Slowest.Count == 0)
-        {
-            <p>@L["NoSamples"]</p>
-        }
-        else
-        {
-            <section aria-labelledby="omni-performance-slowest">
-                <h2 id="omni-performance-slowest">@L["Slowest"]</h2>
-                <p>@string.Format(CultureInfo.CurrentCulture, L["SlowestScope"], PerformanceFormat.Utc(_summary.WindowStart))</p>
-                <table>
-                    <thead>
-                        <tr>
-                            <th scope="col">@L["Duration"]</th>
-                            <th scope="col">@L["Method"]</th>
-                            <th scope="col">@L["Route"]</th>
-                            <th scope="col">@L["Status"]</th>
-                            <th scope="col">@L["Date"]</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var call in _summary.Slowest)
-                        {
-                            <tr>
-                                <td>@PerformanceFormat.Milliseconds(call.DurationMs)</td>
-                                <td>@call.Method</td>
-                                <td><code>@call.Route</code></td>
-                                <td>@call.StatusCode</td>
-                                <td><time datetime="@call.At.ToString("O", CultureInfo.InvariantCulture)">@PerformanceFormat.Utc(call.At)</time></td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </section>
-
-            <section aria-labelledby="omni-performance-routes">
-                <h2 id="omni-performance-routes">@L["ByRoute"]</h2>
-                @if (_summary.Since is { } since)
-                {
-                    <p>@string.Format(CultureInfo.CurrentCulture, L["Window"], _summary.SampleCount.ToString("N0", CultureInfo.CurrentCulture), PerformanceFormat.Utc(since))</p>
-                }
-                @if (_summary.Truncated)
-                {
-                    <p>@L["Truncated"]</p>
-                }
-                <table>
-                    <thead>
-                        <tr>
-                            <th scope="col">@L["Method"]</th>
-                            <th scope="col">@L["Route"]</th>
-                            <th scope="col">@L["Calls"]</th>
-                            <th scope="col">@L["P50"]</th>
-                            <th scope="col">@L["P95"]</th>
-                            <th scope="col">@L["P99"]</th>
-                            <th scope="col">@L["Max"]</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var route in _summary.Routes)
-                        {
-                            <tr>
-                                <td>@route.Method</td>
-                                <td><code>@route.Route</code></td>
-                                <td>@route.Count.ToString("N0", CultureInfo.CurrentCulture)</td>
-                                <td>@PerformanceFormat.Milliseconds(route.P50Ms)</td>
-                                @if (route.Count < P95DistinctFromMaxCalls)
-                                {
-                                    <td><small>@PerformanceFormat.Milliseconds(route.P95Ms)</small></td>
-                                }
-                                else
-                                {
-                                    <td>@PerformanceFormat.Milliseconds(route.P95Ms)</td>
-                                }
-                                @if (route.Count < P99DistinctFromMaxCalls)
-                                {
-                                    <td><small>@PerformanceFormat.Milliseconds(route.P99Ms)</small></td>
-                                }
-                                else
-                                {
-                                    <td>@PerformanceFormat.Milliseconds(route.P99Ms)</td>
-                                }
-                                <td>@PerformanceFormat.Milliseconds(route.MaxMs)</td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-                @if (AnyPercentileRepeatsMax)
-                {
-                    <p><small>@L["FewCalls"]</small></p>
-                }
-            </section>
-        }
+        <OmniPerformanceView />
     </main>
 </body>
 </html>

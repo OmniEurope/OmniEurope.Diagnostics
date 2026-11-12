@@ -4,7 +4,7 @@ namespace OmniEurope.Diagnostics;
 /// <summary>
 /// Where the logs page reads the host's Serilog files, where it keeps its exclusion rules and how much it reads
 /// per request. Configured through
-/// <see cref="Microsoft.Extensions.DependencyInjection.LogsServiceCollectionExtensions.AddOmniLogs"/> (section
+/// <see cref="Microsoft.Extensions.DependencyInjection.LogJournalServiceCollectionExtensions.AddOmniLogJournal"/> or the ASP.NET Core package's <c>AddOmniLogs</c> (section
 /// <c>OmniLogs</c>), checked when the host starts: an unusable value stops the host instead of failing on the page.
 /// </summary>
 public sealed class LogsOptions

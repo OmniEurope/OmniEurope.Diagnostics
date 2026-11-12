@@ -4,7 +4,14 @@
 A Razor class library that adds **a request performance page** and **an application logs page** to an ASP.NET Core
 application, kept to the bare minimum: **no theme, no styling, no third-party dependency**, with a collector memory
 budget of 2 MiB by default.
-A single NuGet package, licensed under EUPL-1.2.
+Licensed under EUPL-1.2, in two NuGet packages:
+
+| Package | For | Holds |
+|---|---|---|
+| `OmniEurope.Diagnostics` | an ASP.NET Core host | the pages and their endpoints (`MapOmniPerformance`, `MapOmniLogs`), antiforgery, `AddOmniPerformance`, `AddOmniLogs`; depends on Core |
+| `OmniEurope.Diagnostics.Core` | any host, a Blazor Hybrid application included | the recorder, the operations API, the `OmniPerformanceView` component, the file logger and the log reading services; no ASP.NET Core shared framework |
+
+The namespaces are the same in both: moving a type between them only needs a recompile.
 
 ## Usage
 
@@ -35,7 +42,8 @@ variables...), then `AddOmniPerformance(o => ...)`, which has the last word:
 | `Window` | `7.00:00:00` (7 days) | How far back the figures go, in memory, reset on restart. |
 | `SlowestCount` | `20` | How many of the slowest requests of the whole window are listed. |
 | `MemoryLimitBytes` | `2097152` (2 MiB) | Memory held by the collector, allocated once at startup. |
-| `RouteFilter` | probes, framework and static files left out | Routes measured (code only). |
+| `RouteFilter` | probes, framework and static files left out | Routes measured (code only); never applies to operations. |
+| `Instruments` | none | The host's own histograms recorded as operations (see below). |
 
 A setting that leaves nothing to measure (a zero window or count, a window reaching back before the first calendar
 date, a limit too low for the chosen window) is refused when the application starts.
@@ -66,13 +74,81 @@ date, a limit too low for the chosen window) is refused when the application sta
   pages read the figures through an application endpoint, leave it out of the measurements (`.DisableHttpMetrics()`),
   otherwise every read raises the signal again.
 
+## Operations timed by the host
+
+Besides the requests, the recorder keeps the operations the application times itself (reading a file, loading a
+screen). They share the window, the slowest list, the memory limit and the change signal with the requests, are
+grouped by name like routes, and are never filtered by `RouteFilter`:
+
+```csharp
+var recorder = services.GetRequiredService<RequestPerformanceRecorder>();
+recorder.RecordOperation("Import file", elapsed, succeeded: true);
+
+using (var timing = recorder.StartOperation("Load screen"))   // timed on the recorder's TimeProvider
+{
+    try { await LoadAsync(); }
+    catch { timing.Fail(); throw; }
+}
+```
+
+The name is kept as given, trimmed, case included; like a route template it names a family, never an identifier
+(each distinct name stays in memory for the life of the process). On a `RequestTimingSample` an operation has an empty
+`Method` and a `StatusCode` of 0 (succeeded) or 1 (failed); `IsOperation` and `Succeeded` read that convention.
+
+An application that already publishes its own histograms names them in `Instruments`:
+
+```csharp
+builder.Services.AddOmniPerformanceCollector(o => o.Instruments.Add(new PerformanceInstrument
+{
+    MeterName = "MyApp.Import", InstrumentName = "myapp.import.duration", NameTag = "operation", // the default tag
+}));
+```
+
+Such a histogram is heard whatever its meter's scope (a `new Meter(...)` has none), with `double` or `long`
+measurements, and only when its unit is `s` (seconds) or `ms` (milliseconds): any other unit, or none, is not heard,
+since its scale would be a guess. The operation is named by the tag's value (a measurement without it is ignored)
+and failed when the measurement carries an `error.type` tag or an `outcome` tag equal to `failure` or `error`.
+
+## Without ASP.NET Core: the Core package
+
+`OmniEurope.Diagnostics.Core` references only packages (`Microsoft.AspNetCore.Components.Web` and
+`Microsoft.Extensions.*`), never the `Microsoft.AspNetCore.App` shared framework, so a .NET MAUI Blazor Hybrid or other
+desktop application can use it:
+
+```csharp
+builder.Services.AddLocalization();
+builder.Services.AddOmniPerformanceCollector();             // the recorder, without any page
+builder.Services.AddOmniLogJournal(o => o.Directory = logFolder); // an absolute folder; ILogJournal, ILogRuleStore, ILogChanges
+var app = builder.Build();
+app.Services.GetRequiredService<RequestPerformanceRecorder>().Start(); // no hosted service runs in such a host
+```
+
+`Start()` is idempotent and is what the host's `StartAsync` calls; `RecordOperation` and `StartOperation` work even
+when it is never called. Without a registered `IHostEnvironment`, a relative log folder is relative to
+`AppContext.BaseDirectory`.
+
+The figures are shown in any Blazor page of the host by the embeddable `OmniPerformanceView` component, a fragment
+(no `<html>`, no class, no style, no script) placed under the host's own heading, layout and authorization; its
+section headings are `h2`, an operation shows its outcome instead of a method and a status, and a refresh button
+reads the figures again in an interactive render mode or a Blazor Hybrid web view (static rendering shows none):
+
+```razor
+@page "/diagnostics/performance"
+@using OmniEurope.Diagnostics.Components
+
+<h1>Performance</h1>
+<OmniPerformanceView />
+```
+
 ## What it deliberately does not do
 
 - **No theme or styling**: no CSS, no script, no icons, no layout. The markup is semantic (headings, tables) so it
   stays readable without a stylesheet. Styling belongs to the application or its component library, which depends on
   this package, never the other way round.
-- **No standalone Blazor WebAssembly**: the collector lives in the server process, the package requires an
-  ASP.NET Core host (Blazor Web App, Blazor Server, API).
+- **No standalone Blazor WebAssembly for the pages**: the request collector and the pages of `OmniEurope.Diagnostics`
+  live in the server process and require an ASP.NET Core host (Blazor Web App, Blazor Server, API). The Core package
+  runs in any .NET process that hosts Blazor components, a Blazor Hybrid application included; it ships no routable
+  page.
 - Nothing beyond the page: the page provided does not refresh itself (reloading it reads the figures again; the
   signal above serves the application's own pages), no history beyond the window or across a restart, no data sent
   anywhere.
@@ -174,7 +250,8 @@ entries it refuses before they are formatted, without counting them as lost; a f
 
 ### Reading the logs in your own screens
 
-`AddOmniLogs()` also registers what the pages are built on, for a host that shows the logs in its own UI:
+`AddOmniLogs()` also registers what the pages are built on, for a host that shows the logs in its own UI;
+`AddOmniLogJournal()` (Core package) registers them alone, without pages, Razor components or antiforgery:
 
 - **`ILogJournal`** (scoped): `ListFilesAsync`, `SearchAsync(LogSearch)` (file, minimum level, dates, text, journal
   or excluded tab; every matching entry newest first, within `MaxBytesRead`, with the tab counts, the rules, the
@@ -192,7 +269,11 @@ entries it refuses before they are formatted, without counting them as lost; a f
 
 ## Dependencies
 
-- Runtime: the `Microsoft.AspNetCore.App` shared framework only, no third-party package.
+- Runtime, `OmniEurope.Diagnostics`: the `Microsoft.AspNetCore.App` shared framework and `OmniEurope.Diagnostics.Core`.
+- Runtime, `OmniEurope.Diagnostics.Core`: Microsoft packages only, all MIT: `Microsoft.AspNetCore.Components.Web`,
+  `Microsoft.Extensions.Diagnostics`, `Microsoft.Extensions.Hosting.Abstractions`, `Microsoft.Extensions.Localization`
+  and `Microsoft.Extensions.Options.ConfigurationExtensions`, in the version of the target framework (10.0.x for
+  `net10.0`, 11.0.x for `net11.0`). No third-party package.
 - Tests only: `xunit.v3` (Apache-2.0), `bunit` (MIT), `Microsoft.AspNetCore.TestHost` (MIT), `coverlet.MTP` (MIT),
   `Microsoft.Testing.Extensions.TrxReport` (MIT).
 - Development only: `dotnet-reportgenerator-globaltool` (Apache-2.0), a local tool pinned in `.config/dotnet-tools.json`
@@ -214,8 +295,8 @@ packages: the repository opens no automatic update request.
 
 Git flow: `main` for released versions, `develop` for integration. Contributors branch `feature/*` from `develop` and
 open a pull request to `develop`; the maintainer commits to `develop` directly. A published GitHub release
-(tag `1.0.0` or `v1.0.0`, equal to the package version) triggers the NuGet publication of the package validated by
-continuous integration.
+(tag `1.0.0` or `v1.0.0`, equal to the version of both packages) triggers the NuGet publication of the packages
+validated by continuous integration.
 
 ## Licence
 

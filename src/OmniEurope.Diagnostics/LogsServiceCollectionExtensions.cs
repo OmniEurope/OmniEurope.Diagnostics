@@ -1,28 +1,26 @@
 // SPDX-License-Identifier: EUPL-1.2
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Options;
 using OmniEurope.Diagnostics;
 using OmniEurope.Diagnostics.Logs;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
-/// <summary>Registers the logs pages of OmniEurope.Diagnostics.</summary>
+/// <summary>Registers the logs pages of OmniEurope.Diagnostics in an ASP.NET Core host.</summary>
 public static class LogsServiceCollectionExtensions
 {
-    /// <summary>The configuration section <see cref="LogsOptions"/> is read from: <c>OmniLogs:Directory</c>, say.</summary>
-    public const string ConfigurationSection = "OmniLogs";
+    /// <summary>The configuration section <see cref="LogsOptions"/> is read from: <c>OmniLogs:Directory</c>, say.
+    /// The same section as <see cref="LogJournalServiceCollectionExtensions.ConfigurationSection"/>.</summary>
+    public const string ConfigurationSection = LogJournalServiceCollectionExtensions.ConfigurationSection;
 
     /// <summary>
-    /// Registers what the logs pages read, filter and render with: <see cref="LogsOptions"/> (bound to
-    /// <see cref="ConfigurationSection"/> and checked when the host starts), the log folder, the exclusion rules,
-    /// Razor components, localization and antiforgery (every form of the pages carries a token the posts check).
-    /// It also registers the public services a host builds its own screen with: <see cref="ILogJournal"/> (scoped),
-    /// <see cref="ILogRuleStore"/> (the JSON rules file, a singleton) and <see cref="ILogChanges"/> (a singleton).
-    /// Each is registered only when the host has not registered its own; a host's registration made after this call
-    /// wins too (the last registration is the one resolved), so a host can keep its rules in a database whatever the
-    /// order. A host-provided <see cref="ILogRuleStore"/> may be scoped.
-    /// Safe to call more than once: the services are registered once and every <paramref name="configure"/> is
-    /// applied. Pair it with <see cref="Microsoft.AspNetCore.Builder.LogsEndpointRouteBuilderExtensions.MapOmniLogs"/>.
+    /// Registers what the logs pages read, filter and render with: the services of
+    /// <see cref="LogJournalServiceCollectionExtensions.AddOmniLogJournal"/> (<see cref="LogsOptions"/> bound to
+    /// <see cref="ConfigurationSection"/> and checked when the host starts, the log folder, the exclusion rules,
+    /// localization, and the public <see cref="ILogJournal"/>, <see cref="ILogRuleStore"/> and
+    /// <see cref="ILogChanges"/> a host builds its own screen with, each registered only when the host has not
+    /// registered its own), then Razor components and antiforgery (every form of the pages carries a token the
+    /// posts check). Safe to call more than once: the services are registered once and every
+    /// <paramref name="configure"/> is applied. Pair it with
+    /// <see cref="Microsoft.AspNetCore.Builder.LogsEndpointRouteBuilderExtensions.MapOmniLogs"/>.
     /// </summary>
     /// <param name="services">The host's services.</param>
     /// <param name="configure">Optional: the folder, pattern, rules file, page size, read cap and follow period;
@@ -30,33 +28,13 @@ public static class LogsServiceCollectionExtensions
     public static IServiceCollection AddOmniLogs(this IServiceCollection services, Action<LogsOptions>? configure = null)
     {
         ArgumentNullException.ThrowIfNull(services);
-        var first = !services.Any(descriptor => descriptor.ServiceType == typeof(LogsPageServices));
-
-        // Bound once, ahead of every configure delegate: appsettings, environment variables
-        // (OmniLogs__Directory) and the host's other sources set the values, code then overrides them.
-        if (first)
-            services.AddOptions<LogsOptions>().BindConfiguration(ConfigurationSection).ValidateOnStart();
-        if (configure is not null)
-            services.Configure(configure);
-        if (!first)
+        services.AddOmniLogJournal(configure);
+        if (services.Any(descriptor => descriptor.ServiceType == typeof(LogsPageServices)))
             return services;
 
-        services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<LogsOptions>, LogsOptionsValidator>());
-        services.AddLocalization();
         services.AddRazorComponents();
         services.AddAntiforgery();
         services.AddSingleton<LogsPageServices>();
-        services.AddSingleton<LogDirectory>();
-        services.TryAddSingleton<ILogRuleStore, LogRuleStore>();
-        services.TryAddScoped<ILogJournal>(provider => new LogJournal(
-            provider.GetRequiredService<LogDirectory>(),
-            provider.GetRequiredService<IOptions<LogsOptions>>(),
-            provider.GetRequiredService<ILogRuleStore>(),
-            provider.GetService<TimeProvider>() ?? TimeProvider.System));
-        services.TryAddSingleton<ILogChanges>(provider => new LogChangeWatcher(
-            provider.GetRequiredService<LogDirectory>(),
-            provider.GetRequiredService<IOptions<LogsOptions>>(),
-            provider.GetService<TimeProvider>() ?? TimeProvider.System));
         services.AddScoped<LogsPageState>();
         return services;
     }

@@ -35,13 +35,13 @@ internal sealed class LogDirectory
 {
     private readonly LogsOptions _options;
 
-    /// <summary>Resolves the folder against the host's content root.</summary>
-    public LogDirectory(IOptions<LogsOptions> options, IHostEnvironment environment)
+    /// <summary>Resolves the folder against the host's content root, or against the application's base directory
+    /// in a host that registers no <see cref="IHostEnvironment"/> (a .NET MAUI application, say).</summary>
+    public LogDirectory(IOptions<LogsOptions> options, IHostEnvironment? environment = null)
     {
         ArgumentNullException.ThrowIfNull(options);
-        ArgumentNullException.ThrowIfNull(environment);
         _options = options.Value;
-        FullPath = Path.GetFullPath(Path.Combine(environment.ContentRootPath, _options.Directory));
+        FullPath = Path.GetFullPath(Path.Combine(environment?.ContentRootPath ?? AppContext.BaseDirectory, _options.Directory));
     }
 
     /// <summary>The folder's absolute path.</summary>

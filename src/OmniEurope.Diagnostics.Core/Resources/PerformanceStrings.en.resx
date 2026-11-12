@@ -23,4 +23,8 @@
   <data name="P99" xml:space="preserve"><value>99th percentile</value></data>
   <data name="Max" xml:space="preserve"><value>Maximum</value></data>
   <data name="FewCalls" xml:space="preserve"><value>In small print: a percentile equal to the maximum, because the route has too few calls to tell them apart (fewer than 20 for the 95th, fewer than 100 for the 99th).</value></data>
+  <data name="Operation" xml:space="preserve"><value>Operation</value></data>
+  <data name="Succeeded" xml:space="preserve"><value>Succeeded</value></data>
+  <data name="Failed" xml:space="preserve"><value>Failed</value></data>
+  <data name="Refresh" xml:space="preserve"><value>Refresh</value></data>
 </root>

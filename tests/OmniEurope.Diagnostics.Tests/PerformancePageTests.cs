@@ -2,6 +2,7 @@
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using Bunit;
+using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using OmniEurope.Diagnostics.Components;
 
@@ -144,6 +145,8 @@ public sealed class PerformancePageTests : IDisposable
     {
         _recorder = new TestRecorder(_clock, options);
         _context.Services.AddSingleton(_recorder.Recorder);
+        // The page is rendered statically by its endpoint (set once the services are complete).
+        _context.SetRendererInfo(new RendererInfo("Static", isInteractive: false));
         return _recorder.Recorder;
     }
 

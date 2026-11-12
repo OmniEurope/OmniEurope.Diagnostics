@@ -3,7 +3,7 @@ namespace OmniEurope.Diagnostics;
 
 /// <summary>
 /// What <see cref="RequestPerformanceRecorder"/> keeps, for how long and in how much memory. Configured
-/// through <see cref="Microsoft.Extensions.DependencyInjection.PerformanceServiceCollectionExtensions.AddOmniPerformance"/>,
+/// through <see cref="Microsoft.Extensions.DependencyInjection.PerformanceCollectorServiceCollectionExtensions.AddOmniPerformanceCollector"/> (or the ASP.NET Core package's <c>AddOmniPerformance</c>),
 /// checked when the recorder is created.
 /// </summary>
 public sealed class PerformanceOptions
@@ -28,9 +28,17 @@ public sealed class PerformanceOptions
     public long MemoryLimitBytes { get; set; } = 2 * 1024 * 1024;
 
     /// <summary>
-    /// Decides whether a route template (lower case with a leading slash, <c>/api/orders/{id}</c>) is measured.
+    /// Decides whether a route template (lower case with a leading slash, <c>/api/orders/{id}</c>) is measured. It never applies to the operations the host records.
     /// Null keeps every templated route except the health probes, the framework and static files
     /// (see <see cref="RequestPerformanceRecorder.IsMeasuredByDefault"/>).
     /// </summary>
     public Func<string, bool>? RouteFilter { get; set; }
+
+    /// <summary>
+    /// The host's own histograms whose measurements are recorded as operations: empty by default. Each names its
+    /// meter, its histogram and the tag carrying the operation name; see <see cref="PerformanceInstrument"/> for the
+    /// units, the scope and the failure tags. Read when the recorder is created. In configuration:
+    /// <c>OmniPerformance:Instruments:0:MeterName</c>, say.
+    /// </summary>
+    public IList<PerformanceInstrument> Instruments { get; } = [];
 }

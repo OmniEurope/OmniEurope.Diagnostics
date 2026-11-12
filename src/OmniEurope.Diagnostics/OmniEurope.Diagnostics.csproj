@@ -3,10 +3,10 @@
     <!-- Every public member carries an XML doc (CS1591 is an error under TreatWarningsAsErrors). -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageId>OmniEurope.Diagnostics</PackageId>
-    <Version>1.1.0</Version>
+    <Version>1.2.0</Version>
     <Authors>OmniEurope contributors</Authors>
     <Company>OmniEurope</Company>
-    <Description>Minimal, unstyled ASP.NET Core diagnostics pages for the site they are mounted in: a request performance page (the slowest calls and per-route percentiles over a configurable window, with a collector memory budget of 2 MiB by default), an application logs page over the host's JSON log files (filters, exclusion rules, CSV export, purge), a file logger writing compact Serilog JSON without depending on Serilog, and a public API to read the logs in the host's own screens.</Description>
+    <Description>Minimal, unstyled ASP.NET Core diagnostics pages for the site they are mounted in: a request performance page (the slowest calls and per-route percentiles over a configurable window, with a collector memory budget of 2 MiB by default), an application logs page over the host's JSON log files (filters, exclusion rules, CSV export, purge), a file logger writing compact Serilog JSON without depending on Serilog, and a public API to read the logs in the host's own screens. The recorder, the file logger and the log reading services come from OmniEurope.Diagnostics.Core, usable without ASP.NET Core.</Description>
     <PackageTags>aspnetcore;blazor;performance;diagnostics;logs;logging;serilog;clef;eupl</PackageTags>
     <PackageLicenseExpression>EUPL-1.2</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -27,8 +27,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The recorder listens to the ASP.NET Core hosting metrics and the page is an endpoint result:
-         the package targets an ASP.NET Core host, never a standalone WebAssembly app. -->
+    <!-- The pages are endpoint results with antiforgery: this package targets an ASP.NET Core host, never a
+         standalone WebAssembly app. The host-agnostic part lives in OmniEurope.Diagnostics.Core. -->
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\OmniEurope.Diagnostics.Core\OmniEurope.Diagnostics.Core.csproj" />
   </ItemGroup>
 </Project>
