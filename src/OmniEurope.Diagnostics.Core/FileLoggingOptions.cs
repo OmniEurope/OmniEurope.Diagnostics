@@ -108,4 +108,14 @@ public sealed class FileLoggingOptions
     /// hides the logs.
     /// </summary>
     public Func<FileLogCandidate, bool>? Filter { get; set; }
+
+    /// <summary>
+    /// False by default: every entry is written whole. True writes, for each entry, its message template
+    /// (<c>Read {Path} failed</c>) but neither its rendered message nor the values of its properties and scopes, and
+    /// for an exception (and each inner one) its type, HResult and throwing method but neither its message nor its
+    /// stack trace: the files can then be shared without the paths, names or other data the values carry. The log
+    /// view shows the template, its holes unfilled. An entry logged without a template (a custom state) has no
+    /// message in the file. The level, category, event id and trace ids are still written.
+    /// </summary>
+    public bool Confidential { get; set; }
 }

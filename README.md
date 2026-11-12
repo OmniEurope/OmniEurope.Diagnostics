@@ -308,6 +308,7 @@ then `AddOmniFileLogging(o => ...)`, which has the last word:
 | `RetentionDays` | `30` | Files of this prefix (every instance, and any prefix that continues it after a `-`) older than that are deleted, at most once an hour; `0` never deletes. |
 | `MaxFileBytes` | `104857600` (100 MiB) | Size above which the day continues in the next numbered file, 4 KiB to 1 GiB. |
 | `QueueCapacity` | `8192` | Entries waiting to be written, 16 to 1048576. |
+| `Confidential` | `false` | `true` writes the message template but neither the rendered message nor the values of the properties and scopes, and for an exception its type, HResult and throwing method but neither its message nor its stack trace; the log view then shows the template. |
 
 In code only, `Filter` (a `Func<FileLogCandidate, bool>`: category, level, event id, message, exception) drops the
 entries it refuses before they are formatted, without counting them as lost; a filter that throws keeps the entry.

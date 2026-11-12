@@ -42,6 +42,10 @@ Version 1.2.0 of the three packages.
   request", exclusion rules, purge with a confirmation step, follow mode on `ILogChanges`, and, when the host registers
   an `ILogFileExport`, the CSV export of the selection and the download of the selected file. Service failures are
   shown as text.
+- `FileLoggingOptions.Confidential` (`OmniLogs:File:Confidential`, off by default): the file logger writes the
+  message template without the rendered message, the property and scope values, and the exception's message and
+  stack trace (its type, HResult and throwing method stay), so the files can be shared without the data the values
+  carry.
 
 ### Changed
 

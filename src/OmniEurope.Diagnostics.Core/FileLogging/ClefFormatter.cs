@@ -17,7 +17,10 @@ internal readonly record struct ClefEvent(
 /// Writes an entry as one line of the compact Serilog JSON format (CLEF): <c>@t</c>, <c>@l</c> (absent for
 /// Information), <c>@mt</c>, <c>@m</c>, <c>@x</c>, <c>@tr</c> and <c>@sp</c>, then <c>SourceContext</c>,
 /// <c>EventId</c>, the state's and the scopes' properties at the top level, a leading <c>@</c> of their own escaped
-/// as <c>@@</c>. The first property of a name wins, so a scope never overrides the entry's own value.
+/// as <c>@@</c>. The first property of a name wins, so a scope never overrides the entry's own value. In
+/// confidential mode only the template is written, never the rendered message nor the values of the state's and the
+/// scopes' properties, and the exception keeps its type, HResult and throwing method, never its message nor its
+/// stack trace (see <see cref="FileLoggingOptions.Confidential"/>).
 /// </summary>
 internal static class ClefFormatter
 {
@@ -26,7 +29,7 @@ internal static class ClefFormatter
     // The file is read as JSON, never embedded in HTML: accented letters stay readable.
     private static readonly JsonWriterOptions WriterOptions = new() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
 
-    public static string Format(ClefEvent entry, object? state, IExternalScopeProvider? scopes, Activity? activity)
+    public static string Format(ClefEvent entry, object? state, IExternalScopeProvider? scopes, Activity? activity, bool confidential = false)
     {
         var buffer = new ArrayBufferWriter<byte>(512);
         using (var json = new Utf8JsonWriter(buffer, WriterOptions))
@@ -38,9 +41,10 @@ internal static class ClefFormatter
             var properties = state as IEnumerable<KeyValuePair<string, object?>>;
             if (Template(properties) is { } template)
                 json.WriteString("@mt", template);
-            json.WriteString("@m", entry.Message);
+            if (!confidential)
+                json.WriteString("@m", entry.Message);
             if (entry.Exception is not null)
-                json.WriteString("@x", entry.Exception.ToString());
+                json.WriteString("@x", confidential ? Outline(entry.Exception) : entry.Exception.ToString());
             if (activity is { IdFormat: ActivityIdFormat.W3C })
             {
                 json.WriteString("@tr", activity.TraceId.ToHexString());
@@ -50,8 +54,11 @@ internal static class ClefFormatter
             if (entry.EventId.Id != 0)
                 WriteEventId(json, entry.EventId);
             var written = new HashSet<string>(StringComparer.Ordinal) { "SourceContext", "EventId" };
-            WriteProperties(json, properties, written);
-            WriteScopes(json, scopes, written);
+            if (!confidential)
+            {
+                WriteProperties(json, properties, written);
+                WriteScopes(json, scopes, written);
+            }
             json.WriteEndObject();
         }
         return Encoding.UTF8.GetString(buffer.WrittenSpan);
@@ -67,6 +74,21 @@ internal static class ClefFormatter
         LogLevel.Critical => "Fatal",
         _ => null,
     };
+
+    /// <summary>
+    /// The exception and its inner ones without what they may hold of the user's data: one line each, its type, its
+    /// HResult and the method that threw it, never its message nor its stack trace.
+    /// </summary>
+    internal static string Outline(Exception exception)
+    {
+        var lines = new List<string>();
+        for (var current = exception; current is not null; current = current.InnerException)
+        {
+            var site = current.TargetSite is { } method ? " in " + (method.DeclaringType is { } type ? type.FullName + "." : "") + method.Name : "";
+            lines.Add(string.Create(CultureInfo.InvariantCulture, $"{current.GetType().FullName} (HResult 0x{current.HResult:X8}){site}"));
+        }
+        return string.Join("\n ---> ", lines);
+    }
 
     private static string? Template(IEnumerable<KeyValuePair<string, object?>>? properties) =>
         properties?.FirstOrDefault(pair => pair.Key == OriginalFormat).Value as string;

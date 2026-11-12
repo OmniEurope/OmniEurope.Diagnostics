@@ -20,6 +20,7 @@ internal sealed class FileLoggerProvider : ILoggerProvider, ISupportExternalScop
     private readonly TimeProvider _time;
     private readonly LogLevel _minLevel;
     private readonly Func<FileLogCandidate, bool>? _filter;
+    private readonly bool _confidential;
     private IExternalScopeProvider? _scopes;
 
     /// <summary>The container's constructor: a relative folder is resolved against the content root.</summary>
@@ -34,6 +35,7 @@ internal sealed class FileLoggerProvider : ILoggerProvider, ISupportExternalScop
         _time = time;
         _minLevel = options.MinLevel;
         _filter = options.Filter;
+        _confidential = options.Confidential;
         var directory = Path.GetFullPath(Path.Combine(contentRoot, options.Directory));
         _writer = new LogFileWriter(directory, new LogFileNames(options.FilePrefix, options.Instance), options, time, drainGate, openFile);
     }
@@ -64,7 +66,7 @@ internal sealed class FileLoggerProvider : ILoggerProvider, ISupportExternalScop
             if (_filter is not null && !Accepts(_filter, new FileLogCandidate(category, level, eventId, message, exception)))
                 return;
             var entry = new ClefEvent(now, level, category, eventId, message, exception);
-            json = ClefFormatter.Format(entry, state, _scopes, Activity.Current);
+            json = ClefFormatter.Format(entry, state, _scopes, Activity.Current, _confidential);
         }
         catch (Exception)
         {
