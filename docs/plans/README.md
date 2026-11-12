@@ -15,7 +15,7 @@ describes a piece of work, not the state of the product.
 
 | Plan | Subject |
 |---|---|
-| None | |
+| [PLAN-004](PLAN-004-core-aspnetcore-maui-packages-and-host-operations.md) | Core, ASP.NET Core and MAUI packages, host-recorded operations, embeddable views (1.2.0) |
 
 ## Archived plans
 
