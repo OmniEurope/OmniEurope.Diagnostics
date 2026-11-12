@@ -1,0 +1,12 @@
+@inherits LayoutComponentBase
+
+<nav>
+    <NavLink href="" Match="NavLinkMatch.All">Home</NavLink>
+    <NavLink href="performance">Performance</NavLink>
+    @* The logs page goes here: add <NavLink href="logs">Logs</NavLink> and a Pages/Logs.razor (@page "/logs",
+       an h1, then the OmniLogsView component) once that component ships in OmniEurope.Diagnostics.Core. *@
+</nav>
+
+<main>
+    @Body
+</main>

@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/samples/">
+    <Project Path="samples/OmniEurope.Diagnostics.Sample.Maui/OmniEurope.Diagnostics.Sample.Maui.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/OmniEurope.Diagnostics.Core/OmniEurope.Diagnostics.Core.csproj" />
+    <Project Path="src/OmniEurope.Diagnostics.Maui/OmniEurope.Diagnostics.Maui.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/OmniEurope.Diagnostics.Maui.Tests/OmniEurope.Diagnostics.Maui.Tests.csproj" />
+  </Folder>
+</Solution>

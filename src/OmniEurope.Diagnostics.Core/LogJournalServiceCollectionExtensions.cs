@@ -18,7 +18,7 @@ public static class LogJournalServiceCollectionExtensions
     /// <see cref="LogsOptions"/> (bound to <see cref="ConfigurationSection"/>, checked when a host starts, or when
     /// they are first read in a host that runs no hosted service), the log folder (a relative
     /// <see cref="LogsOptions.Directory"/> is resolved against <see cref="IHostEnvironment.ContentRootPath"/>, or
-    /// against <see cref="AppContext.BaseDirectory"/> when no host environment is registered), localization, and the
+    /// against <see cref="AppContext.BaseDirectory"/> when no usable host environment is registered, which is the case in a .NET MAUI application), localization, and the
     /// public services: <see cref="ILogJournal"/> (scoped), <see cref="ILogRuleStore"/> (the JSON rules file, a
     /// singleton) and <see cref="ILogChanges"/> (a singleton). Each public service is registered only when the host
     /// has not registered its own; a host's registration made after this call wins too (the last registration is

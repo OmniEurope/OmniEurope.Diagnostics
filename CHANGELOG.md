@@ -4,7 +4,7 @@ Notable changes to this project are documented here, following the Keep a Change
 
 ## [Unreleased]
 
-Version 1.2.0 of both packages.
+Version 1.2.0 of the three packages.
 
 ### Added
 
@@ -25,9 +25,18 @@ Version 1.2.0 of both packages.
 - `OmniPerformanceView`: the figures of the performance page as an embeddable, unstyled Blazor fragment with a refresh
   button in interactive rendering; an operation shows its outcome. The performance page renders through it.
 - `AddOmniLogJournal()`: the log reading services (`ILogJournal`, `ILogRuleStore`, `ILogChanges`) without pages,
-  Razor components or antiforgery; `AddOmniLogs()` builds on it. Without a registered `IHostEnvironment`, a relative
+  Razor components or antiforgery; `AddOmniLogs()` builds on it. Without a usable `IHostEnvironment` (none registered, or
+  the one a .NET MAUI application registers, whose content root is not implemented), a relative
   log folder is relative to `AppContext.BaseDirectory`.
 - `ILogFileExport`: the abstraction a host implements to save or offer an exported log file.
+- `OmniEurope.Diagnostics.Maui` package (Windows, `net11.0-windows10.0.19041.0`): `UseOmniDiagnostics()` on the MAUI app
+  builder registers the file logger in the `logs` folder of `FileSystem.AppDataDirectory`, the log reading services over the same folder
+  (`*.json;*.log`, plain-text `.log` files stay readable), the performance recorder started at application start by an
+  `IMauiInitializeService` that also checks the options, localization, and a Windows `FileSavePicker` implementation of
+  `ILogFileExport` that a host can replace. `OmniMauiDiagnosticsOptions` sets the folder and pattern and reaches the
+  underlying options. A runnable, unpackaged sample lives in `samples/OmniEurope.Diagnostics.Sample.Maui`; the MAUI
+  projects have their own solution, `OmniEurope.Diagnostics.Maui.slnx`, built by a Windows job of continuous
+  integration, which also publishes the package after Core.
 
 ### Changed
 

@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+  <PropertyGroup>
+    <!-- Windows only, unpackaged: the maui-windows workload is the only MAUI workload the machine and CI install.
+         Directory.Build.props sets the library targets; the sample replaces them. -->
+    <TargetFrameworks></TargetFrameworks>
+    <TargetFramework>net11.0-windows10.0.19041.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>OmniEurope.Diagnostics.Sample</RootNamespace>
+    <UseMaui>true</UseMaui>
+    <SingleProject>true</SingleProject>
+    <IsPackable>false</IsPackable>
+    <!-- Disable MAUI CSS handling so Blazor handles it. -->
+    <EnableDefaultCssItems>false</EnableDefaultCssItems>
+    <ApplicationTitle>Diagnostics sample</ApplicationTitle>
+    <ApplicationId>eu.omnieurope.diagnostics.sample</ApplicationId>
+    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+    <ApplicationVersion>1</ApplicationVersion>
+    <WindowsPackageType>None</WindowsPackageType>
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#512BD4" />
+    <MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#512BD4" BaseSize="128,128" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Maui.Controls" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\OmniEurope.Diagnostics.Maui\OmniEurope.Diagnostics.Maui.csproj" />
+  </ItemGroup>
+</Project>

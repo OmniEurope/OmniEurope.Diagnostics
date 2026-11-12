@@ -35,11 +35,16 @@ jobs:
             Select-Object -First 1
           if (-not $run) { throw "No successful push CI run found for release commit $releaseSha." }
           "run_id=$($run.id)" >> $env:GITHUB_OUTPUT
-      - name: Download the package validated by CI
+      - name: Download the packages validated by CI
+        # The ubuntu job uploads Core and the ASP.NET Core package, the windows job the MAUI package.
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh run download '${{ steps.ci.outputs.run_id }}' --repo $env:GITHUB_REPOSITORY --name nuget-package --dir artifacts/packages
+        run: |
+          foreach ($artifact in 'nuget-package', 'nuget-package-maui') {
+            gh run download '${{ steps.ci.outputs.run_id }}' --repo $env:GITHUB_REPOSITORY --name $artifact --dir artifacts/packages
+            if ($LASTEXITCODE -ne 0) { throw "Downloading the artifact $artifact failed." }
+          }
       - name: Check the version against the release tag
         id: package
         shell: pwsh
@@ -47,8 +52,8 @@ jobs:
           TAG: ${{ github.event.release.tag_name }}
         run: |
           $version = $env:TAG -replace '^v', ''
-          # Core first: the ASP.NET Core package depends on it.
-          $paths = foreach ($id in 'OmniEurope.Diagnostics.Core', 'OmniEurope.Diagnostics') {
+          # Core first: the ASP.NET Core and MAUI packages depend on it.
+          $paths = foreach ($id in 'OmniEurope.Diagnostics.Core', 'OmniEurope.Diagnostics', 'OmniEurope.Diagnostics.Maui') {
             $expected = "artifacts/packages/$id.$version.nupkg"
             if (-not (Test-Path $expected)) { throw "Expected $id.$version.nupkg for tag $env:TAG, found $((Get-ChildItem artifacts/packages/*.nupkg).Name -join ', ')." }
             if (-not (Test-Path "artifacts/packages/$id.$version.snupkg")) { throw "The symbol package of $id is missing." }

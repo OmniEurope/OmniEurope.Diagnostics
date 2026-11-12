@@ -4,14 +4,15 @@
 A Razor class library that adds **a request performance page** and **an application logs page** to an ASP.NET Core
 application, kept to the bare minimum: **no theme, no styling, no third-party dependency**, with a collector memory
 budget of 2 MiB by default.
-Licensed under EUPL-1.2, in two NuGet packages:
+Licensed under EUPL-1.2, in three NuGet packages:
 
 | Package | For | Holds |
 |---|---|---|
 | `OmniEurope.Diagnostics` | an ASP.NET Core host | the pages and their endpoints (`MapOmniPerformance`, `MapOmniLogs`), antiforgery, `AddOmniPerformance`, `AddOmniLogs`; depends on Core |
 | `OmniEurope.Diagnostics.Core` | any host, a Blazor Hybrid application included | the recorder, the operations API, the `OmniPerformanceView` component, the file logger and the log reading services; no ASP.NET Core shared framework |
+| `OmniEurope.Diagnostics.Maui` | a .NET MAUI Blazor Hybrid application on Windows | one registration call (`UseOmniDiagnostics`): file logs in the application data folder, the log reading services, the recorder started at application start, the save dialog export; depends on Core |
 
-The namespaces are the same in both: moving a type between them only needs a recompile.
+The namespaces are the same in Core and the ASP.NET Core package: moving a type between them only needs a recompile.
 
 ## Usage
 
@@ -124,7 +125,8 @@ app.Services.GetRequiredService<RequestPerformanceRecorder>().Start(); // no hos
 ```
 
 `Start()` is idempotent and is what the host's `StartAsync` calls; `RecordOperation` and `StartOperation` work even
-when it is never called. Without a registered `IHostEnvironment`, a relative log folder is relative to
+when it is never called. Without a usable `IHostEnvironment` (none registered, or the one a .NET MAUI application
+registers, whose content root is not implemented), a relative log folder is relative to
 `AppContext.BaseDirectory`.
 
 The figures are shown in any Blazor page of the host by the embeddable `OmniPerformanceView` component, a fragment
@@ -139,6 +141,40 @@ reads the figures again in an interactive render mode or a Blazor Hybrid web vie
 <h1>Performance</h1>
 <OmniPerformanceView />
 ```
+
+## .NET MAUI Blazor Hybrid (Windows): the MAUI package
+
+`OmniEurope.Diagnostics.Maui` (Windows only for now: it targets `net11.0-windows10.0.19041.0`, the platform it is
+built and proved on) depends on Core and `Microsoft.Maui.Controls`. One call in `MauiProgram.CreateMauiApp`
+registers everything a Blazor Hybrid application needs:
+
+```csharp
+var builder = MauiApp.CreateBuilder();
+builder.UseMauiApp<App>();
+builder.Services.AddMauiBlazorWebView();
+builder.UseOmniDiagnostics();            // optionally: builder.UseOmniDiagnostics(o => o.LogDirectory = "...")
+return builder.Build();
+```
+
+- **File logs**: the file logger writes into the `logs` folder of `FileSystem.AppDataDirectory`
+  (`OmniMauiDiagnosticsOptions.LogDirectory`, or `OmniLogs:File:Directory` in the configuration, overrides it).
+- **Log reading**: `ILogJournal`, `ILogRuleStore` and `ILogChanges` read the same folder, listing `*.json;*.log` by
+  default (`LogFilePattern`, or `OmniLogs:FilePattern`, overrides it), so a plain-text `.log` the application already
+  writes, a crash log for instance, stays readable next to the JSON files; `.log` files are read as plain text.
+- **Performance**: the recorder is registered and **started at application start** by an `IMauiInitializeService`,
+  since a MAUI host runs no hosted service and would otherwise never start it. The initializer first checks the options
+  as a server host does when it starts: an invalid option stops the application at launch. The recorder and the file
+  logger are disposed with the container.
+- **Export**: an `ILogFileExport` offers an exported log file through the Windows save dialog (`FileSavePicker`
+  attached to the current window); cancelling the dialog writes nothing. It is registered only when the host has not
+  registered its own, so a host can replace it.
+- `ConfigureFileLogging`, `ConfigureLogs` and `ConfigurePerformance` on `OmniMauiDiagnosticsOptions` reach the
+  options of the underlying services (retention, page size, instruments...).
+
+The pages are the host's own Razor components, as in the previous section (`OmniPerformanceView`). A runnable
+Windows sample, unpackaged, lives in `samples/OmniEurope.Diagnostics.Sample.Maui`; the MAUI projects have their own
+solution, `OmniEurope.Diagnostics.Maui.slnx` (workload `maui-windows`), so that `OmniEurope.Diagnostics.slnx` still
+builds anywhere.
 
 ## What it deliberately does not do
 
@@ -274,6 +310,10 @@ entries it refuses before they are formatted, without counting them as lost; a f
   `Microsoft.Extensions.Diagnostics`, `Microsoft.Extensions.Hosting.Abstractions`, `Microsoft.Extensions.Localization`
   and `Microsoft.Extensions.Options.ConfigurationExtensions`, in the version of the target framework (10.0.x for
   `net10.0`, 11.0.x for `net11.0`). No third-party package.
+- Runtime, `OmniEurope.Diagnostics.Maui`: `OmniEurope.Diagnostics.Core` and `Microsoft.Maui.Controls` (MIT), 11.0.x.
+  Its Windows save dialog uses the Windows App SDK that MAUI brings, nothing more.
+- Sample only (`samples/OmniEurope.Diagnostics.Sample.Maui`, not packed): `Microsoft.AspNetCore.Components.WebView.Maui`
+  and `Microsoft.Extensions.Logging.Debug` (MIT).
 - Tests only: `xunit.v3` (Apache-2.0), `bunit` (MIT), `Microsoft.AspNetCore.TestHost` (MIT), `coverlet.MTP` (MIT),
   `Microsoft.Testing.Extensions.TrxReport` (MIT).
 - Development only: `dotnet-reportgenerator-globaltool` (Apache-2.0), a local tool pinned in `.config/dotnet-tools.json`
@@ -284,6 +324,14 @@ entries it refuses before they are formatted, without counting them as lost; a f
 ```powershell
 .\ylaunch.ps1 -t     # build and run the tests
 .\ylaunch.ps1 -c     # coverage, blocking floors, then the CRAP gate
+```
+
+The MAUI package, its tests and the sample build apart, on Windows with the `maui-windows` workload
+(`dotnet workload install maui-windows`):
+
+```powershell
+dotnet build OmniEurope.Diagnostics.Maui.slnx --configuration Release
+dotnet test --project tests/OmniEurope.Diagnostics.Maui.Tests/OmniEurope.Diagnostics.Maui.Tests.csproj --configuration Release
 ```
 
 `-c` fails under 95 % of lines or 85 % of branches covered (`scripts/coverage-gate.ps1`), then if a method scores

@@ -1,0 +1,62 @@
+@page "/"
+@using System.Security.Cryptography
+@inject RequestPerformanceRecorder Recorder
+@inject ILogger<Home> Logger
+
+<h1>Diagnostics sample</h1>
+
+<p>
+    Each button times an operation of this application with the performance recorder, or writes a log entry through
+    <code>ILogger</code>. The figures are on the Performance page.
+</p>
+
+<div class="actions">
+    <button type="button" @onclick="ReadApplicationFileAsync">Read an application file (succeeds)</button>
+    <button type="button" @onclick="ReadMissingFileAsync">Read a missing file (fails)</button>
+    <button type="button" @onclick="LogInformation">Log an information</button>
+    <button type="button" @onclick="LogError">Log an error</button>
+</div>
+
+<p role="status">@_status</p>
+
+@code {
+    private string _status = "Nothing done yet.";
+
+    /// <summary>Reads and hashes the application's own assembly, real work the recorder times.</summary>
+    private async Task ReadApplicationFileAsync()
+    {
+        using var timing = Recorder.StartOperation("Read application file");
+        var path = typeof(MauiProgram).Assembly.Location;
+        var bytes = await File.ReadAllBytesAsync(path);
+        var hash = Convert.ToHexString(SHA256.HashData(bytes));
+        _status = $"Read {bytes.Length:N0} bytes of {Path.GetFileName(path)} (SHA-256 {hash[..12]}...).";
+    }
+
+    /// <summary>Reads a file that does not exist: the operation is recorded as failed.</summary>
+    private async Task ReadMissingFileAsync()
+    {
+        using var timing = Recorder.StartOperation("Read missing file");
+        try
+        {
+            await File.ReadAllBytesAsync(Path.Combine(AppContext.BaseDirectory, "missing.dat"));
+        }
+        catch (FileNotFoundException exception)
+        {
+            timing.Fail();
+            Logger.LogError(exception, "Reading {File} failed", "missing.dat");
+            _status = "The file is missing: the operation was recorded as failed.";
+        }
+    }
+
+    private void LogInformation()
+    {
+        Logger.LogInformation("The sample logged an information at {Time}", DateTimeOffset.Now);
+        _status = "An information entry was logged.";
+    }
+
+    private void LogError()
+    {
+        Logger.LogError("The sample logged an error at {Time}", DateTimeOffset.Now);
+        _status = "An error entry was logged.";
+    }
+}

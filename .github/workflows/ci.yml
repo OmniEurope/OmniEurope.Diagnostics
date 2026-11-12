@@ -121,3 +121,70 @@ jobs:
           name: nuget-package
           path: artifacts/packages
           if-no-files-found: error
+
+  windows:
+    # The MAUI package, its tests and the sample: Windows only, since the maui-windows workload is the only MAUI
+    # workload built and proved. The ubuntu job above never sees a MAUI project (OmniEurope.Diagnostics.slnx).
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+      - name: Install the MAUI Windows workload
+        run: dotnet workload install maui-windows
+      - name: Restore
+        run: dotnet restore OmniEurope.Diagnostics.Maui.slnx
+      - name: Build
+        run: dotnet build OmniEurope.Diagnostics.Maui.slnx --configuration Release --no-restore
+      - name: Tests
+        # The package's registrations and initializer; the save dialog needs a window and a user, the sample
+        # exercises it.
+        run: >-
+          dotnet test --project tests/OmniEurope.Diagnostics.Maui.Tests/OmniEurope.Diagnostics.Maui.Tests.csproj
+          --configuration Release --no-build --no-progress
+          --report-trx --report-trx-filename tests.trx --results-directory artifacts/tests-maui
+      - name: Verify the test results exist
+        # A run that wrote no result file is a failure, whatever its exit code.
+        shell: pwsh
+        run: |
+          $trx = Get-ChildItem artifacts/tests-maui -Filter tests.trx -Recurse -File | Select-Object -First 1
+          if (-not $trx) { throw 'The test run produced no TRX.' }
+          $counters = ([xml](Get-Content $trx.FullName -Raw)).TestRun.ResultSummary.Counters
+          if ([int]$counters.total -eq 0) { throw 'The TRX holds no test.' }
+          "Tests: $($counters.passed) passed of $($counters.total)."
+      - name: Pack
+        run: dotnet pack src/OmniEurope.Diagnostics.Maui/OmniEurope.Diagnostics.Maui.csproj --configuration Release --no-build --output artifacts/packages
+      - name: Package content
+        # What a consumer receives: the library, its documentation, the README, the symbols. It references Core
+        # and the MAUI controls package alone, never the ASP.NET Core shared framework.
+        shell: pwsh
+        run: |
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $id = 'OmniEurope.Diagnostics.Maui'
+          $framework = 'net11.0-windows10.0.19041'
+          $package = Get-ChildItem artifacts/packages -Filter "$id.*.nupkg" | Where-Object { $_.Name -match "^$([regex]::Escape($id))\.\d" } | Select-Object -First 1
+          $symbols = Get-ChildItem artifacts/packages -Filter "$id.*.snupkg" | Where-Object { $_.Name -match "^$([regex]::Escape($id))\.\d" } | Select-Object -First 1
+          if (-not $package -or -not $symbols) { throw "The package $id or its symbol package is missing." }
+          $zip = [IO.Compression.ZipFile]::OpenRead($package.FullName)
+          try {
+            $entries = @($zip.Entries.FullName)
+            foreach ($file in @('README.md', "lib/$framework/$id.dll", "lib/$framework/$id.xml")) {
+              if ($entries -notcontains $file) { throw "Missing from ${id}: $file" }
+            }
+            $styled = @($entries | Where-Object { $_ -match '\.(css|js|mjs)$' })
+            if ($styled) { throw "$id must ship no stylesheet or script: $($styled -join ', ')" }
+            $reader = [IO.StreamReader]::new(($zip.Entries | Where-Object FullName -eq "$id.nuspec").Open())
+            try { [xml]$nuspec = $reader.ReadToEnd() } finally { $reader.Dispose() }
+          } finally { $zip.Dispose() }
+          $metadata = $nuspec.package.metadata
+          $frameworks = @($metadata.frameworkReferences.group | ForEach-Object { $_.frameworkReference } | Where-Object { $_ } | ForEach-Object { $_.name })
+          if ($frameworks) { throw "$id must reference no shared framework: $($frameworks -join ', ')" }
+          $dependencies = @($metadata.dependencies.group | ForEach-Object { $_.dependency } | Where-Object { $_ } | ForEach-Object { $_.id } | Sort-Object -Unique)
+          if (($dependencies -join ',') -ne 'Microsoft.Maui.Controls,OmniEurope.Diagnostics.Core') { throw "Unexpected dependencies of ${id}: $($dependencies -join ', ')" }
+          "Package $($metadata.id) $($metadata.version) verified."
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: nuget-package-maui
+          path: artifacts/packages
+          if-no-files-found: error

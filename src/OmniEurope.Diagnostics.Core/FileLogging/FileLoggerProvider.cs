@@ -24,7 +24,7 @@ internal sealed class FileLoggerProvider : ILoggerProvider, ISupportExternalScop
 
     /// <summary>The container's constructor: a relative folder is resolved against the content root.</summary>
     public FileLoggerProvider(IOptions<FileLoggingOptions> options, IHostEnvironment? environment = null, TimeProvider? time = null)
-        : this(options.Value, environment?.ContentRootPath ?? AppContext.BaseDirectory, time ?? TimeProvider.System, Task.CompletedTask)
+        : this(options.Value, HostContentRoot.Of(environment), time ?? TimeProvider.System, Task.CompletedTask)
     {
     }
 

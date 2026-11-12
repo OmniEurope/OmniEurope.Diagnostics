@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- Windows only: the maui-windows workload is the only MAUI workload the machine and CI install, so no
+         other platform can be built or proved yet. Directory.Build.props sets the library targets; this package
+         replaces them. -->
+    <TargetFrameworks></TargetFrameworks>
+    <TargetFramework>net11.0-windows10.0.19041.0</TargetFramework>
+    <UseMaui>true</UseMaui>
+    <!-- Every public member carries an XML doc (CS1591 is an error under TreatWarningsAsErrors). -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <RootNamespace>OmniEurope.Diagnostics.Maui</RootNamespace>
+    <PackageId>OmniEurope.Diagnostics.Maui</PackageId>
+    <Version>1.2.0</Version>
+    <Authors>OmniEurope contributors</Authors>
+    <Company>OmniEurope</Company>
+    <Description>The .NET MAUI Blazor Hybrid integration of OmniEurope.Diagnostics (Windows): one registration call that writes the application's logs to files in its data folder, reads them back, starts the in-process performance recorder at application start (a MAUI host runs no hosted service) and exports log files through the system save dialog. The performance and logs views come from OmniEurope.Diagnostics.Core.</Description>
+    <PackageTags>maui;blazor;hybrid;performance;diagnostics;logs;logging;serilog;clef;eupl</PackageTags>
+    <PackageLicenseExpression>EUPL-1.2</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryType>git</RepositoryType>
+    <RepositoryUrl>https://github.com/OmniEurope/OmniEurope.Diagnostics</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/OmniEurope/OmniEurope.Diagnostics</PackageProjectUrl>
+    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+    <IsPackable>true</IsPackable>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Central package management turns off the SDK's implicit MAUI references: this one is explicit, and
+         versioned in Directory.Packages.props. -->
+    <PackageReference Include="Microsoft.Maui.Controls" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\OmniEurope.Diagnostics.Core\OmniEurope.Diagnostics.Core.csproj" />
+  </ItemGroup>
+</Project>
