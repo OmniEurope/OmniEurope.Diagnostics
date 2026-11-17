@@ -1,12 +1,16 @@
-# ylaunch-core 1.0.7
+# ylaunch-core 1.0.8
 #
-# Shared launcher core. Everything project-specific lives in the repository's own ylaunch.ps1 ($LaunchConfig) and in the
+# Shared launcher core of the _Generic kit. DO NOT EDIT A COPY: this file is maintained in the kit
+# (deploy/scripts/ylaunch-core.ps1), copied verbatim into scripts/ of every repository, and its
+# version + SHA-256 are registered in deploy/scripts/ylaunch-core.versions.json. The kit check
+# (verify-launcher-core.ps1, audit-projects.ps1) reports a copy that is stale or locally modified.
+# Everything project-specific lives in the repository's own ylaunch.ps1 ($LaunchConfig) and in the
 # gitignored .ylaunch.local.
 #
 # Requires PowerShell 7.2+. The root ylaunch.ps1 relaunches Windows PowerShell into pwsh before it
 # dot-sources this file, because PS 5.1 parses the whole file before running any of it.
 #
-# Canonical flags: -s Silent, -r Reset,
+# Contract: docs/contracts/deployment.md, "Launcher contract". Canonical flags: -s Silent, -r Reset,
 # -t unit suites, -ta everything, -tb/-tf/-ti/-te/-tec, -c Coverage, -hr HotReload, -w Worktree,
 # -cdp DebugPort (desktop host), -h/-hl. No test flag ever resets the database: only -r does.
 #
@@ -21,7 +25,7 @@
 
 Set-StrictMode -Off
 
-$script:YLaunchCoreVersion = '1.0.7'
+$script:YLaunchCoreVersion = '1.0.8'
 $script:YLaunchExitCode = 0
 # Components started by this run, so an unexpected error still stops them instead of orphaning them.
 $script:YActiveJobs = $null
@@ -358,7 +362,7 @@ function Expand-YValue([string]$Value, [hashtable]$Config, [hashtable]$Runtime) 
 function Show-YVersionGuard([string]$Root, [string]$Solution) {
     $globalJson = Find-YGlobalJson $Root
     if (-not $globalJson) {
-        Write-Host "  [guard] global.json missing: the SDK floor is undeclared." -ForegroundColor Yellow
+        Write-Host "  [guard] global.json missing: the SDK floor is undeclared (STD-SDKPIN)." -ForegroundColor Yellow
         return
     }
     $floor = (Get-Content -LiteralPath $globalJson -Raw | ConvertFrom-Json).sdk.version
@@ -401,28 +405,62 @@ function Show-YVersionGuard([string]$Root, [string]$Solution) {
             if (-not $report -or -not $report.PSObject.Properties['projects']) {
                 throw 'NuGet JSON contains no projects collection.'
             }
-            # Only the three compiler packages qualify, at the floor's exact pin.
+            # Only the three compiler packages named by STD-SDKPIN qualify, at the floor's exact pin.
             $floorVersion = [version]$floor
             $band = '{0}.{1}.{2}' -f $floorVersion.Major, $floorVersion.Minor, [math]::Floor($floorVersion.Build / 100)
             $roslynPins = @{ '9.0.1' = '4.12.0'; '10.0.1' = '5.0.0'; '10.0.2' = '5.3.0'; '10.0.3' = '5.6.0'; '10.0.4' = '5.9.0' }
             $compilerPackages = @('Microsoft.CodeAnalysis.CSharp', 'Microsoft.CodeAnalysis.CSharp.Workspaces', 'Microsoft.CodeAnalysis.Workspaces.Common')
             $count = 0
             $pinned = 0
+            # A package whose resolved major matches the target framework (10.0.x on net10.0) while the newest
+            # release is the next framework's major (11.x) is aligned on purpose: only a newer release inside
+            # its own major makes it outdated, checked below with --highest-minor.
+            $aligned = @{}
             foreach ($project in @($report.projects)) {
                 if (-not $project.PSObject.Properties['frameworks']) { continue }
                 foreach ($framework in @($project.frameworks)) {
                     if (-not $framework.PSObject.Properties['topLevelPackages']) { continue }
+                    $tfmMajor = if ($framework.PSObject.Properties['framework'] -and $framework.framework -match '^net(\d+)\.') { [int]$Matches[1] } else { 0 }
                     foreach ($package in @($framework.topLevelPackages)) {
                         if (-not $package -or -not $package.PSObject.Properties['id'] -or -not $package.PSObject.Properties['resolvedVersion']) {
                             throw 'NuGet JSON contains an incomplete package reference.'
                         }
                         # A package of a private feed, in the nuget.org only check: no version to compare it with.
                         if ($package.PSObject.Properties['latestVersion'] -and $package.latestVersion -notmatch '^\d') { continue }
+                        $resolvedMajor = if ($package.resolvedVersion -match '^(\d+)\.') { [int]$Matches[1] } else { -1 }
+                        $latestMajor = if ($package.PSObject.Properties['latestVersion'] -and $package.latestVersion -match '^(\d+)\.') { [int]$Matches[1] } else { -1 }
                         if ($roslynPins.ContainsKey($band) -and $package.id -in $compilerPackages -and $package.resolvedVersion -eq $roslynPins[$band]) {
                             $pinned++
+                        } elseif ($tfmMajor -gt 0 -and $resolvedMajor -eq $tfmMajor -and $latestMajor -gt $tfmMajor) {
+                            $aligned["$($package.id)|$($package.resolvedVersion)"] = $true
                         } else {
                             $count++
                         }
+                    }
+                }
+            }
+            if ($aligned.Count -gt 0) {
+                $sourceArgs = if ($scope) { @('--source', 'https://api.nuget.org/v3/index.json') } else { @() }
+                $minor = & dotnet list $Solution package --outdated --highest-minor @sourceArgs --format json 2>$null
+                if ($LASTEXITCODE -ne 0) {
+                    Write-Host "  [guard] $($aligned.Count) framework-aligned package reference(s) not checked within their major (dotnet list --highest-minor failed)." -ForegroundColor Yellow
+                } else {
+                    $minorReport = ($minor -join "`n") | ConvertFrom-Json -ErrorAction Stop
+                    $stale = @{}
+                    foreach ($project in @($minorReport.projects)) {
+                        if (-not $project.PSObject.Properties['frameworks']) { continue }
+                        foreach ($framework in @($project.frameworks)) {
+                            if (-not $framework.PSObject.Properties['topLevelPackages']) { continue }
+                            foreach ($package in @($framework.topLevelPackages)) {
+                                $key = "$($package.id)|$($package.resolvedVersion)"
+                                if ($aligned.ContainsKey($key) -and $package.latestVersion -match '^\d') { $stale[$key] = $true }
+                            }
+                        }
+                    }
+                    $count += $stale.Count
+                    $held = $aligned.Count - $stale.Count
+                    if ($held -gt 0) {
+                        Write-Host "  [guard] $held package(s) aligned on the target framework major (newer major belongs to the next .NET), up to date within it." -ForegroundColor DarkGray
                     }
                 }
             }
@@ -430,7 +468,7 @@ function Show-YVersionGuard([string]$Root, [string]$Solution) {
                 Write-Host "  [guard] $count NuGet package reference(s) outdated (dotnet list package --outdated$scope)." -ForegroundColor Yellow
             }
             if ($pinned -gt 0) {
-                Write-Host "  [guard] $pinned Roslyn package reference(s) deliberately held at $($roslynPins[$band]) for SDK floor $floor." -ForegroundColor DarkGray
+                Write-Host "  [guard] $pinned Roslyn package reference(s) deliberately held at $($roslynPins[$band]) for SDK floor $floor (STD-SDKPIN)." -ForegroundColor DarkGray
             }
         } catch {
             Write-Host "  [guard] NuGet update check unreadable: package freshness could not be verified ($($_.Exception.Message))." -ForegroundColor Yellow
@@ -438,20 +476,14 @@ function Show-YVersionGuard([string]$Root, [string]$Solution) {
     }
 }
 
-# Optional rules check, outside the repository: a folder holding verify-rules.ps1, named by
-# $env:YLAUNCH_RULES_ROOT or the RULES_ROOT key of the gitignored .ylaunch.local. Without one the check
-# is skipped. The launcher shows the count and never blocks.
+# verify-rules.ps1 lives in the _Generic kit only; it is never copied. Resolved through
+# $env:GENERIC_KIT, else the conventional path. The launcher shows the count and never blocks: the
+# /audit `rules` lens and CI run it blocking.
 function Show-YRulesPreflight([string]$Root) {
-    $rulesRoot = $env:YLAUNCH_RULES_ROOT
-    $localPath = Join-Path $Root '.ylaunch.local'
-    if (-not $rulesRoot -and (Test-Path -LiteralPath $localPath)) {
-        $line = Get-Content -LiteralPath $localPath | Where-Object { $_ -match '^\s*RULES_ROOT\s*=' } | Select-Object -First 1
-        if ($line) { $rulesRoot = ($line -split '=', 2)[1].Trim() }
-    }
-    if (-not $rulesRoot) { return }
-    $verifyRules = Join-Path $rulesRoot 'verify-rules.ps1'
+    $kitRoot = if ($env:GENERIC_KIT) { $env:GENERIC_KIT } else { 'C:\Dev\_Generic' }
+    $verifyRules = Join-Path $kitRoot 'verify-rules.ps1'
     if (-not (Test-Path -LiteralPath $verifyRules)) {
-        Write-Host "  [rules] verify-rules.ps1 not found in ${rulesRoot}: rules not checked." -ForegroundColor DarkGray
+        Write-Host "  [rules] verify-rules.ps1 not found in the kit ($kitRoot): mechanised rules not checked." -ForegroundColor DarkGray
         return
     }
     try {
@@ -475,7 +507,7 @@ function Show-YRulesPreflight([string]$Root) {
 # The single definition of "this checkout": the owned folders of $LaunchConfig.OwnedFolders under the
 # checkout root, <root>\src\ by default. A bare project name would match every checkout on the
 # machine, and <root> alone would let a parent checkout claim the worktrees nested under it
-# (nested worktrees), so the root itself is never an owned folder. Shared toolchain processes are
+# (.claude\worktrees\...), so the root itself is never an owned folder. Shared toolchain processes are
 # never the application.
 $script:YToolchainPattern = '(?i)MSBuild\.dll|VBCSCompiler|LanguageServer|\brzc\.dll|testhost|vstest\.console|dotnet-ef|ServiceHub|Roslyn'
 

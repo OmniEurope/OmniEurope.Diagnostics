@@ -49,6 +49,11 @@ Version 1.2.0 of the three packages.
 
 ### Changed
 
+- The logs pages, their export and download, and the performance page answer with `Cache-Control: no-store`.
+- Symbolic links and reparse points in the log folder are no longer listed, read or downloaded.
+- Plain-text `.log` entries with many continuation lines (a long stack trace) are read in linear time.
+- The documentation of `FileLoggingOptions.Confidential` states that a message interpolated with `$"..."` carries its
+  values in its template; log with message templates when the mode matters.
 - Plain-text `.log` files: a line starting with a date between brackets (`[2026-11-12 11:09:34.613 +01:00]`) opens an
   entry as a bare ISO date does; the lines after it without a date continue its message instead of being entries of
   their own; separator lines (only dashes or equal signs) are skipped; a level name after the date sets the level and a
