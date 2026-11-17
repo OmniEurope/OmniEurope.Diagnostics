@@ -45,9 +45,12 @@ public sealed class FileLoggingOptions
     public const int MaxQueueCapacity = 1024 * 1024;
 
     /// <summary>
-    /// Required: the folder the log files are written to, created when missing. A relative path is relative to
-    /// the host's content root (<c>IHostEnvironment.ContentRootPath</c>, the application's base directory without
-    /// a host).
+    /// The folder the log files are written to, created when missing. A relative path is relative to the host's
+    /// content root (<c>IHostEnvironment.ContentRootPath</c>, the application's base directory without a host).
+    /// Left empty, a host gives it a default: <c>logs</c> under the content root in the Development environment,
+    /// <c>{CommonApplicationData}/{ApplicationName}/logs</c> in any other (<c>C:\ProgramData\MyApp\logs</c> on
+    /// Windows), the account running the application needing write access there. Without a host environment (a
+    /// .NET MAUI application, say) the folder is required.
     /// </summary>
     public string Directory { get; set; } = "";
 

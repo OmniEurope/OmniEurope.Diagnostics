@@ -42,6 +42,9 @@ Version 1.2.0 of the three packages.
   request", exclusion rules, purge with a confirmation step, follow mode on `ILogChanges`, and, when the host registers
   an `ILogFileExport`, the CSV export of the selection and the download of the selected file. Service failures are
   shown as text.
+- `FileLoggingOptions.Directory` has a default when the host names none: `logs` under the content root in the Development
+  environment, `{CommonApplicationData}/{ApplicationName}/logs` in any other; without a host environment or an application
+  name (a MAUI application) the folder stays required.
 - `FileLoggingOptions.Confidential` (`OmniLogs:File:Confidential`, off by default): the file logger writes the
   message template without the rendered message, the property and scope values, and the exception's message and
   stack trace (its type, HResult and throwing method stay), so the files can be shared without the data the values

@@ -20,6 +20,7 @@ public sealed class FileLoggingHostTests : IDisposable
     private IHost Start(Dictionary<string, string?> settings, Action<ILoggingBuilder> logging)
     {
         var builder = Host.CreateEmptyApplicationBuilder(new HostApplicationBuilderSettings { ContentRootPath = _folder.Path });
+        builder.Environment.ApplicationName = ""; // no default folder: a test must never write under CommonApplicationData
         builder.Configuration.AddInMemoryCollection(settings);
         builder.Logging.AddConfiguration(builder.Configuration.GetSection("Logging"));
         builder.Services.AddSingleton<TimeProvider>(new FixedTime(FileLogs.Noon));
@@ -72,7 +73,7 @@ public sealed class FileLoggingHostTests : IDisposable
     }
 
     [Fact]
-    public void AMissingDirectory_StopsTheHost()
+    public void AMissingDirectory_WithoutAnApplicationName_StopsTheHost()
     {
         var error = Assert.Throws<OptionsValidationException>(() => Start([], logging => logging.AddOmniFileLogging()).Dispose());
 

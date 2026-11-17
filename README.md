@@ -301,7 +301,7 @@ then `AddOmniFileLogging(o => ...)`, which has the last word:
 
 | Setting | Default | Purpose |
 |---|---|---|
-| `Directory` | required | The folder the files are written to; relative to the content root. |
+| `Directory` | `logs` in Development, else `{CommonApplicationData}/{ApplicationName}/logs` | The folder the files are written to; relative to the content root. The default applies when a host environment is registered with an application name; without one (a MAUI application) the folder is required. The account running the application needs write access to a default under `CommonApplicationData`. |
 | `FilePrefix` | `app` | The start of every file name: letters, digits, `-`, `_`, `.`, 64 at most. |
 | `Instance` | none | Added to the file name, cleaned to a host-name-like token. |
 | `MinLevel` | `Information` | The lowest level written. |
