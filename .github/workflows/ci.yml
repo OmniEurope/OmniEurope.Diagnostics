@@ -142,27 +142,6 @@ jobs:
         run: dotnet restore OmniEurope.Diagnostics.Maui.slnx -p:Configuration=Release
       - name: Build
         run: dotnet build OmniEurope.Diagnostics.Maui.slnx --configuration Release --no-restore
-      - name: Probe the MAUI test host
-        timeout-minutes: 3
-        continue-on-error: true
-        shell: pwsh
-        run: |
-          $exe = 'tests/OmniEurope.Diagnostics.Maui.Tests/bin/Release/net11.0-windows10.0.19041.0/OmniEurope.Diagnostics.Maui.Tests.exe'
-          $env:COREHOST_TRACE = '1'; $env:COREHOST_TRACEFILE = 'host.trace'; $env:COREHOST_TRACE_VERBOSITY = '4'
-          $p = Start-Process $exe -ArgumentList '--diagnostic','--diagnostic-verbosity','trace','--diagnostic-output-directory','artifacts/tests-maui/probe' -PassThru -RedirectStandardOutput probe.out -RedirectStandardError probe.err
-          if (-not $p.WaitForExit(90000)) {
-            "Still running after 90 s, pid $($p.Id); modules and threads:"
-            Get-Process -Id $p.Id | Select-Object Id, CPU, Threads, HandleCount, WorkingSet64 | Format-List | Out-String
-            $p.Threads | Group-Object ThreadState, WaitReason | ForEach-Object { "$($_.Count) x $($_.Name)" }
-            dotnet tool install --global dotnet-stack 2>&1 | Select-Object -Last 2
-            $env:PATH += ';' + (Join-Path $env:USERPROFILE '.dotnet	ools')
-            'managed stacks:'; dotnet-stack report -p $p.Id 2>&1 | Select-Object -First 60
-            $p.Kill()
-          } else { "Exited with $($p.ExitCode)" }
-          'host trace (last 25 lines):'; Get-Content host.trace -ErrorAction SilentlyContinue | Select-Object -Last 25
-          'stdout:'; Get-Content probe.out -ErrorAction SilentlyContinue | Select-Object -First 40
-          'stderr:'; Get-Content probe.err -ErrorAction SilentlyContinue | Select-Object -First 40
-          Get-ChildItem artifacts/tests-maui/probe -Recurse -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName
       - name: Tests
         timeout-minutes: 6
         # The package's registrations and initializer; the save dialog needs a window and a user, the sample
@@ -171,7 +150,6 @@ jobs:
           dotnet test --project tests/OmniEurope.Diagnostics.Maui.Tests/OmniEurope.Diagnostics.Maui.Tests.csproj
           --configuration Release --no-build --no-progress
           --report-trx --report-trx-filename tests.trx --results-directory artifacts/tests-maui
-          --diagnostic --diagnostic-verbosity trace --diagnostic-output-directory artifacts/tests-maui/diag
       - name: Upload the MAUI test diagnostics
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

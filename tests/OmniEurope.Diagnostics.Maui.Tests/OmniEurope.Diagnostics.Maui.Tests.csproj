@@ -6,6 +6,9 @@
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
     <OutputType>Exe</OutputType>
+    <!-- The tests never create a window. The Windows App SDK start-up code a Windows MAUI assembly brings would wait for the
+         Windows App Runtime on a machine that lacks it (a CI runner), so the process never reached its first test. -->
+    <WindowsAppSdkBootstrapInitialize>false</WindowsAppSdkBootstrapInitialize>
   </PropertyGroup>
 
   <ItemGroup>
