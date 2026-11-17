@@ -143,12 +143,21 @@ jobs:
       - name: Build
         run: dotnet build OmniEurope.Diagnostics.Maui.slnx --configuration Release --no-restore
       - name: Tests
+        timeout-minutes: 6
         # The package's registrations and initializer; the save dialog needs a window and a user, the sample
         # exercises it.
         run: >-
           dotnet test --project tests/OmniEurope.Diagnostics.Maui.Tests/OmniEurope.Diagnostics.Maui.Tests.csproj
           --configuration Release --no-build --no-progress
           --report-trx --report-trx-filename tests.trx --results-directory artifacts/tests-maui
+          --diagnostic --diagnostic-verbosity trace --diagnostic-output-directory artifacts/tests-maui/diag
+      - name: Upload the MAUI test diagnostics
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: maui-test-diagnostics
+          path: artifacts/tests-maui
+          if-no-files-found: warn
       - name: Verify the test results exist
         # A run that wrote no result file is a failure, whatever its exit code.
         shell: pwsh
