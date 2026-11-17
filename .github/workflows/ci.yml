@@ -148,6 +148,7 @@ jobs:
         shell: pwsh
         run: |
           $exe = 'tests/OmniEurope.Diagnostics.Maui.Tests/bin/Release/net11.0-windows10.0.19041.0/OmniEurope.Diagnostics.Maui.Tests.exe'
+          $env:COREHOST_TRACE = '1'; $env:COREHOST_TRACEFILE = 'host.trace'; $env:COREHOST_TRACE_VERBOSITY = '4'
           $p = Start-Process $exe -ArgumentList '--diagnostic','--diagnostic-verbosity','trace','--diagnostic-output-directory','artifacts/tests-maui/probe' -PassThru -RedirectStandardOutput probe.out -RedirectStandardError probe.err
           if (-not $p.WaitForExit(90000)) {
             "Still running after 90 s, pid $($p.Id); modules and threads:"
@@ -155,6 +156,7 @@ jobs:
             $p.Threads | Group-Object ThreadState, WaitReason | ForEach-Object { "$($_.Count) x $($_.Name)" }
             $p.Kill()
           } else { "Exited with $($p.ExitCode)" }
+          'host trace (last 25 lines):'; Get-Content host.trace -ErrorAction SilentlyContinue | Select-Object -Last 25
           'stdout:'; Get-Content probe.out -ErrorAction SilentlyContinue | Select-Object -First 40
           'stderr:'; Get-Content probe.err -ErrorAction SilentlyContinue | Select-Object -First 40
           Get-ChildItem artifacts/tests-maui/probe -Recurse -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName
