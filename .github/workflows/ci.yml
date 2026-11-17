@@ -154,6 +154,9 @@ jobs:
             "Still running after 90 s, pid $($p.Id); modules and threads:"
             Get-Process -Id $p.Id | Select-Object Id, CPU, Threads, HandleCount, WorkingSet64 | Format-List | Out-String
             $p.Threads | Group-Object ThreadState, WaitReason | ForEach-Object { "$($_.Count) x $($_.Name)" }
+            dotnet tool install --global dotnet-stack 2>&1 | Select-Object -Last 2
+            $env:PATH += ';' + (Join-Path $env:USERPROFILE '.dotnet	ools')
+            'managed stacks:'; dotnet-stack report -p $p.Id 2>&1 | Select-Object -First 60
             $p.Kill()
           } else { "Exited with $($p.ExitCode)" }
           'host trace (last 25 lines):'; Get-Content host.trace -ErrorAction SilentlyContinue | Select-Object -Last 25
