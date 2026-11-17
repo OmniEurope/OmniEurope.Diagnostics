@@ -171,6 +171,50 @@ public sealed class LogsEndpointTests : IDisposable
     }
 
     [Theory]
+    [InlineData("/logs")]
+    [InlineData("/logs/rules")]
+    [InlineData("/logs/download?file=app-20261107.json")]
+    public async Task EveryPage_AsksNotToBeCached(string address)
+    {
+        WriteJournal();
+        await using var host = await LogsHost.StartAsync(_folder.Path);
+
+        var response = await host.Client.GetAsync(address, Ct);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        // The antiforgery token of the rules page adds its own no-cache next to it.
+        Assert.True(response.Headers.CacheControl?.NoStore);
+    }
+
+    [Fact]
+    public async Task ASymbolicLink_IsNeitherListedNorDownloaded()
+    {
+        WriteJournal();
+        var target = Path.Combine(Path.GetTempPath(), "omni-logs-tests-outside-" + Guid.NewGuid().ToString("N") + ".json");
+        await File.WriteAllTextAsync(target, "{}\n", Ct);
+        try
+        {
+            try
+            {
+                File.CreateSymbolicLink(_folder.File("app-linked.json"), target);
+            }
+            catch (Exception exception) when (exception is UnauthorizedAccessException or IOException or PlatformNotSupportedException)
+            {
+                return; // creating a link needs a privilege some machines do not grant: nothing to prove here
+            }
+            await using var host = await LogsHost.StartAsync(_folder.Path);
+
+            var response = await host.Client.GetAsync("/logs/download?file=app-linked.json", Ct);
+
+            Assert.NotEqual(HttpStatusCode.OK, response.StatusCode);
+        }
+        finally
+        {
+            File.Delete(target);
+        }
+    }
+
+    [Theory]
     [InlineData("..\\secret.json", HttpStatusCode.BadRequest)]
     [InlineData("../secret.json", HttpStatusCode.BadRequest)]
     [InlineData("C:\\Windows\\win.ini", HttpStatusCode.BadRequest)]

@@ -28,6 +28,7 @@ public sealed class PerformanceEndpointTests
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("text/html", response.Content.Headers.ContentType?.MediaType);
+        Assert.Equal("no-store", response.Headers.CacheControl?.ToString());
         Assert.StartsWith("<!DOCTYPE html>", html.TrimStart(), StringComparison.Ordinal);
         Assert.Contains("<code>/orders/{id}</code>", html, StringComparison.Ordinal);
         Assert.DoesNotContain("/orders/7", html, StringComparison.Ordinal);

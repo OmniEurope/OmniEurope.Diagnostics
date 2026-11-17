@@ -308,7 +308,7 @@ then `AddOmniFileLogging(o => ...)`, which has the last word:
 | `RetentionDays` | `30` | Files of this prefix (every instance, and any prefix that continues it after a `-`) older than that are deleted, at most once an hour; `0` never deletes. |
 | `MaxFileBytes` | `104857600` (100 MiB) | Size above which the day continues in the next numbered file, 4 KiB to 1 GiB. |
 | `QueueCapacity` | `8192` | Entries waiting to be written, 16 to 1048576. |
-| `Confidential` | `false` | `true` writes the message template but neither the rendered message nor the values of the properties and scopes, and for an exception its type, HResult and throwing method but neither its message nor its stack trace; the log view then shows the template. |
+| `Confidential` | `false` | `true` writes the message template but neither the rendered message nor the values of the properties and scopes, and for an exception its type, HResult and throwing method but neither its message nor its stack trace; the log view then shows the template. The template is written as logged: a message interpolated with `$"..."` carries its values in the template, so log with message templates (`{Path}` holes, analyzer CA2254) when this mode matters. |
 
 In code only, `Filter` (a `Func<FileLogCandidate, bool>`: category, level, event id, message, exception) drops the
 entries it refuses before they are formatted, without counting them as lost; a filter that throws keeps the entry.
@@ -372,7 +372,7 @@ packages: the repository opens no automatic update request.
 
 Git flow: `main` for released versions, `develop` for integration. Contributors branch `feature/*` from `develop` and
 open a pull request to `develop`; the maintainer commits to `develop` directly. A published GitHub release
-(tag `1.0.0` or `v1.0.0`, equal to the version of both packages) triggers the NuGet publication of the packages
+(tag `1.0.0` or `v1.0.0`, equal to the version of the three packages) triggers the NuGet publication of the packages
 validated by continuous integration.
 
 ## Licence

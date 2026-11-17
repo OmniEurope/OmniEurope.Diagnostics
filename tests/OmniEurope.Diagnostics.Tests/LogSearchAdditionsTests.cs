@@ -173,6 +173,22 @@ public sealed class LogSearchAdditionsTests : IDisposable
     public void ASeparatorLine_IsOnlyDashesOrOnlyEqualSigns(string line, bool expected) => Assert.Equal(expected, LogTextLine.IsSeparator(line));
 
     [Fact]
+    public async Task AVeryLongTrace_IsOneEntry_WithEveryLineInOrder()
+    {
+        const int traceLines = 20_000;
+        _folder.Write("long.log", [
+            "2026-11-08 11:00:00.000 +01:00 [ERR] Long failure",
+            .. Enumerable.Range(1, traceLines).Select(i => "   at Frame" + i + "()"),
+            "2026-11-08 11:00:01.000 +01:00 [INF] After",
+        ], Day);
+
+        var result = await Journal("*.log").SearchAsync(new LogSearch(), Ct);
+
+        Assert.Equal(["After", "Long failure\n" + string.Join('\n', Enumerable.Range(1, traceLines).Select(i => "   at Frame" + i + "()"))],
+            result.Entries.Select(row => row.Entry.Message));
+    }
+
+    [Fact]
     public async Task ATextFileWithoutAnyTimestamp_IsDatedByItsLastWrite()
     {
         _folder.Write("third-party.log", ["started", "stopped"], Day);

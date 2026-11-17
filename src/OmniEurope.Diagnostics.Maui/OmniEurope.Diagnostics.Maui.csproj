@@ -10,21 +10,8 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <RootNamespace>OmniEurope.Diagnostics.Maui</RootNamespace>
     <PackageId>OmniEurope.Diagnostics.Maui</PackageId>
-    <Version>1.2.0</Version>
-    <Authors>OmniEurope contributors</Authors>
-    <Company>OmniEurope</Company>
     <Description>The .NET MAUI Blazor Hybrid integration of OmniEurope.Diagnostics (Windows): one registration call that writes the application's logs to files in its data folder, reads them back, starts the in-process performance recorder at application start (a MAUI host runs no hosted service) and exports log files through the system save dialog. The performance and logs views come from OmniEurope.Diagnostics.Core.</Description>
     <PackageTags>maui;blazor;hybrid;performance;diagnostics;logs;logging;serilog;clef;eupl</PackageTags>
-    <PackageLicenseExpression>EUPL-1.2</PackageLicenseExpression>
-    <PackageReadmeFile>README.md</PackageReadmeFile>
-    <RepositoryType>git</RepositoryType>
-    <RepositoryUrl>https://github.com/OmniEurope/OmniEurope.Diagnostics</RepositoryUrl>
-    <PackageProjectUrl>https://github.com/OmniEurope/OmniEurope.Diagnostics</PackageProjectUrl>
-    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
-    <IsPackable>true</IsPackable>
-    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
-    <IncludeSymbols>true</IncludeSymbols>
-    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
 
   <ItemGroup>

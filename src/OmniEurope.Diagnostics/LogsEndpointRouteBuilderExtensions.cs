@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: EUPL-1.2
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using OmniEurope.Diagnostics;
 using OmniEurope.Diagnostics.Logs;
 
 namespace Microsoft.AspNetCore.Builder;
@@ -45,6 +46,8 @@ public static class LogsEndpointRouteBuilderExtensions
         group.MapPost("/purge", (Func<HttpContext, Task<IResult>>)handlers.Purge);
         // Left out of the request metrics, like the performance page: reading the logs is not the site's traffic.
         group.DisableHttpMetrics();
+        // The journal, the export and the downloads are the host's private data: no cache, shared or local, keeps them.
+        group.AddEndpointFilter(NoStore.Apply);
         return group;
     }
 }

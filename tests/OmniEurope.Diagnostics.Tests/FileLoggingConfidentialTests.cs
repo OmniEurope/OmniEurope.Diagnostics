@@ -93,6 +93,18 @@ public sealed class FileLoggingConfidentialTests : IDisposable
     }
 
     [Fact]
+    public void Confidential_AnInterpolatedMessage_CarriesItsValuesInTheTemplate_TheDocumentedLimit()
+    {
+        using (var provider = FileLogs.Provider(_folder.Path, options => options.Confidential = true))
+            provider.CreateLogger("Shop.Files").LogWarning($"Read {SecretPath} failed");
+
+        var line = Assert.Single(FileLogs.Lines(_folder.File("app-20261108.json")));
+
+        Assert.Contains("Read ", line, StringComparison.Ordinal);
+        Assert.Contains("secret", line, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Outline_OfAnExceptionNeverThrown_HasNoMethod()
     {
         Assert.Equal("System.InvalidOperationException (HResult 0x80131509)", ClefFormatter.Outline(new InvalidOperationException("secret")));

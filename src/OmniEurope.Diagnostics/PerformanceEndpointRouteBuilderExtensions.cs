@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: EUPL-1.2
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Routing;
+using OmniEurope.Diagnostics;
 using OmniEurope.Diagnostics.Components;
 
 namespace Microsoft.AspNetCore.Builder;
@@ -30,6 +32,7 @@ public static class PerformanceEndpointRouteBuilderExtensions
             throw new InvalidOperationException(
                 "The performance page needs AddOmniPerformance(): AddOmniPerformanceCollector() registers the measurement without the page.");
         // Left out of the request metrics: reading the figures must not rank the page among the slowest calls.
-        return endpoints.MapGet(pattern, static () => new RazorComponentResult<PerformancePage>()).DisableHttpMetrics();
+        return endpoints.MapGet(pattern, static () => new RazorComponentResult<PerformancePage>()).DisableHttpMetrics()
+            .AddEndpointFilter(NoStore.Apply);
     }
 }

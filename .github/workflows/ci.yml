@@ -43,7 +43,7 @@ jobs:
         run: dotnet build OmniEurope.Diagnostics.slnx --configuration Release --no-restore
       - name: Tests and coverage (net10.0)
         # global.json runs dotnet test on Microsoft.Testing.Platform: xunit.v3 runs the suite, TrxReport
-        # writes the TRX and coverlet.MTP one Cobertura report, restricted to the two published libraries.
+        # writes the TRX and coverlet.MTP one Cobertura report, restricted to the two libraries of this job (the MAUI package is built and tested in the windows job, outside the coverage and CRAP gates).
         # The gates read one Cobertura report, so coverage comes from the net10.0 run.
         run: >-
           dotnet test --project tests/OmniEurope.Diagnostics.Tests/OmniEurope.Diagnostics.Tests.csproj

@@ -76,6 +76,8 @@ internal sealed class LogDirectory
             .SelectMany(pattern => folder.EnumerateFiles(pattern, SearchOption.TopDirectoryOnly))
             .DistinctBy(file => file.Name, StringComparer.Ordinal)
             .Where(file => !file.Name.StartsWith(_options.RulesFile, StringComparison.OrdinalIgnoreCase))
+            // A link could point outside the folder: only the folder's own files are listed.
+            .Where(file => file.LinkTarget is null && !file.Attributes.HasFlag(FileAttributes.ReparsePoint))
             .OrderByDescending(file => file.LastWriteTimeUtc)
             .ThenByDescending(file => file.Name, StringComparer.Ordinal)
             .ToList();

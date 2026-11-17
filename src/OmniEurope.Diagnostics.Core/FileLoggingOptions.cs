@@ -115,7 +115,8 @@ public sealed class FileLoggingOptions
     /// for an exception (and each inner one) its type, HResult and throwing method but neither its message nor its
     /// stack trace: the files can then be shared without the paths, names or other data the values carry. The log
     /// view shows the template, its holes unfilled. An entry logged without a template (a custom state) has no
-    /// message in the file. The level, category, event id and trace ids are still written.
+    /// message in the file. The template is written as logged: a message interpolated with <c>$"..."</c> carries its
+    /// values in the template, so log with message templates (analyzer CA2254) when this mode matters. The level, category, event id and trace ids are still written.
     /// </summary>
     public bool Confidential { get; set; }
 }

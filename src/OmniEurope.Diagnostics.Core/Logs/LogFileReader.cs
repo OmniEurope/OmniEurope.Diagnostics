@@ -155,6 +155,7 @@ internal static class LogFileReader
             lineNumber++;
             ParseLine(line, complete, fromEnd ? null : lineNumber, file, result);
         }
+        CloseEntry(file, result);
         if (file.UnreadableCount > 0)
             result.Issues.Add(new LogFileIssue(file.Name) { UnreadableCount = file.UnreadableCount, Lines = file.Lines });
     }
@@ -177,9 +178,24 @@ internal static class LogFileReader
         /// own.</summary>
         public int? OpenEntry { get; set; }
 
+        /// <summary>The lines read after the open entry's own, not yet written into its message.</summary>
+        public System.Text.StringBuilder? Continuation { get; set; }
+
         public int UnreadableCount { get; set; }
 
         public List<int> Lines { get; } = [];
+    }
+
+    /// <summary>Writes the lines gathered after the open entry into its message and leaves no entry open.</summary>
+    private static void CloseEntry(FileState file, LogReadResult result)
+    {
+        if (file.OpenEntry is { } open && file.Continuation is { } continuation)
+        {
+            var opened = result.Entries[open];
+            result.Entries[open] = opened with { Message = opened.Message + continuation };
+        }
+        file.Continuation = null;
+        file.OpenEntry = null;
     }
 
     private static void ParseLine(ReadOnlyMemory<byte> line, bool complete, int? lineNumber, FileState file, LogReadResult result)
@@ -214,16 +230,18 @@ internal static class LogFileReader
     {
         if (LogTextLine.IsSeparator(line))
         {
-            file.OpenEntry = null;
+            CloseEntry(file, result);
             return;
         }
         var header = LogTextLine.ParseHeader(line);
-        if (header is null && file.OpenEntry is { } open)
+        if (header is null && file.OpenEntry is not null)
         {
-            var opened = result.Entries[open];
-            result.Entries[open] = opened with { Message = opened.Message + "\n" + line };
+            // Gathered here and written once when the entry closes: appending to the message each time would copy it
+            // again for every line of a long stack trace.
+            (file.Continuation ??= new System.Text.StringBuilder()).Append('\n').Append(line);
             return;
         }
+        CloseEntry(file, result);
         var entry = header ?? LogTextLine.Standalone(line, file.LastTimestamp);
         file.LastTimestamp = entry.Timestamp;
         // Only a timestamped line opens an entry: a file without any timestamp keeps one entry per line.
