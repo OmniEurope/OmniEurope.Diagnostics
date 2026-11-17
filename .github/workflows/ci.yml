@@ -142,6 +142,22 @@ jobs:
         run: dotnet restore OmniEurope.Diagnostics.Maui.slnx -p:Configuration=Release
       - name: Build
         run: dotnet build OmniEurope.Diagnostics.Maui.slnx --configuration Release --no-restore
+      - name: Probe the MAUI test host
+        timeout-minutes: 3
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $exe = 'tests/OmniEurope.Diagnostics.Maui.Tests/bin/Release/net11.0-windows10.0.19041.0/OmniEurope.Diagnostics.Maui.Tests.exe'
+          $p = Start-Process $exe -ArgumentList '--diagnostic','--diagnostic-verbosity','trace','--diagnostic-output-directory','artifacts/tests-maui/probe' -PassThru -RedirectStandardOutput probe.out -RedirectStandardError probe.err
+          if (-not $p.WaitForExit(90000)) {
+            "Still running after 90 s, pid $($p.Id); modules and threads:"
+            Get-Process -Id $p.Id | Select-Object Id, CPU, Threads, HandleCount, WorkingSet64 | Format-List | Out-String
+            $p.Threads | Group-Object ThreadState, WaitReason | ForEach-Object { "$($_.Count) x $($_.Name)" }
+            $p.Kill()
+          } else { "Exited with $($p.ExitCode)" }
+          'stdout:'; Get-Content probe.out -ErrorAction SilentlyContinue | Select-Object -First 40
+          'stderr:'; Get-Content probe.err -ErrorAction SilentlyContinue | Select-Object -First 40
+          Get-ChildItem artifacts/tests-maui/probe -Recurse -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName
       - name: Tests
         timeout-minutes: 6
         # The package's registrations and initializer; the save dialog needs a window and a user, the sample
