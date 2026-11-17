@@ -4,6 +4,8 @@ Notable changes to this project are documented here, following the Keep a Change
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-17
+
 Version 1.2.0 of the three packages.
 
 ### Added
