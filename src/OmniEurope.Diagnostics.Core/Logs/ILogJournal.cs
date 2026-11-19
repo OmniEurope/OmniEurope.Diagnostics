@@ -21,9 +21,10 @@ public interface ILogJournal
     Task<IReadOnlyList<LogFileInfo>> ListFilesAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Every entry <paramref name="search"/> accepts, newest first, read within <see cref="LogsOptions.MaxBytesRead"/>
-    /// (the newest files first, a larger file from its end), split between the journal and the excluded tab by the
-    /// enabled rules of <see cref="ILogRuleStore"/>. The caller pages and sorts the entries itself.
+    /// Every entry <paramref name="search"/> accepts, newest first unless <see cref="LogSearch.SortBy"/> says otherwise,
+    /// read within <see cref="LogsOptions.MaxBytesRead"/> (the newest files first, a larger file from its end), split
+    /// between the journal and the excluded tab by the enabled rules of <see cref="ILogRuleStore"/>. The order covers
+    /// the whole result, so the caller pages it (Skip/Take) without re-sorting.
     /// </summary>
     /// <param name="search">The file, filters and tab.</param>
     /// <param name="cancellationToken">Cancels the search: checked before each file and each line read.</param>
@@ -87,6 +88,13 @@ public sealed record LogSearch
     /// <summary>The caller's own exclusions: an entry one of them matches is in neither tab nor count. Empty by default.</summary>
     public IReadOnlyList<LogExclusion> Exclusions { get; init; } = [];
 
+    /// <summary>What the entries are ordered by; the timestamp by default.</summary>
+    public LogSortField SortBy { get; init; } = LogSortField.Timestamp;
+
+    /// <summary>True (the default) for the largest first: the newest instant, the most severe level, the category
+    /// from Z to A. Entries of the same level or category are always newest first.</summary>
+    public bool Descending { get; init; } = true;
+
     /// <summary>Whether <paramref name="entry"/> passes the level, date and text filters and no exclusion matches it
     /// (not the file nor the tab).</summary>
     internal bool Accepts(LogEntry entry) =>
@@ -102,10 +110,24 @@ public sealed record LogSearch
     private static bool Contains(string? field, string text) => field?.Contains(text, StringComparison.OrdinalIgnoreCase) == true;
 }
 
+/// <summary>The column <see cref="LogSearch.SortBy"/> orders the entries by.</summary>
+public enum LogSortField
+{
+    /// <summary>When the event happened (ties in file order).</summary>
+    Timestamp,
+
+    /// <summary>The level, <see cref="LogSeverity.Verbose"/> lowest.</summary>
+    Level,
+
+    /// <summary>The category, case ignored; an entry without one sorts as empty.</summary>
+    Category,
+}
+
 /// <summary>What <see cref="ILogJournal.SearchAsync"/> found, and what it had to leave out.</summary>
 public sealed record LogSearchResult
 {
-    /// <summary>The entries of the tab searched (or of both, <see cref="LogSearch.AllTabs"/>), newest first.</summary>
+    /// <summary>The entries of the tab searched (or of both, <see cref="LogSearch.AllTabs"/>), in the order of
+    /// <see cref="LogSearch.SortBy"/> (newest first by default).</summary>
     public required IReadOnlyList<LogRow> Entries { get; init; }
 
     /// <summary>The entries of the journal tab under the filters, whatever tab was searched.</summary>

@@ -100,6 +100,43 @@ public sealed class LogJournalTests : IDisposable
         Assert.Equal((3, 2), (all.JournalCount, all.ExcludedCount));
     }
 
+    [Theory]
+    [InlineData(LogSortField.Timestamp, false, new[] { "Started", "Health check ok@1", "Order failed", "Health check ok@3", "Payment slow" })]
+    [InlineData(LogSortField.Timestamp, true, new[] { "Payment slow", "Health check ok@3", "Order failed", "Health check ok@1", "Started" })]
+    [InlineData(LogSortField.Level, true, new[] { "Order failed", "Payment slow", "Started", "Health check ok@3", "Health check ok@1" })]
+    [InlineData(LogSortField.Level, false, new[] { "Health check ok@3", "Health check ok@1", "Started", "Payment slow", "Order failed" })]
+    [InlineData(LogSortField.Category, false, new[] { "Health check ok@3", "Health check ok@1", "Started", "Order failed", "Payment slow" })]
+    [InlineData(LogSortField.Category, true, new[] { "Payment slow", "Order failed", "Started", "Health check ok@3", "Health check ok@1" })]
+    public async Task TheSort_OrdersTheWholeResult_ByTheFieldAndDirection_TiesNewestFirstForLevelAndCategory(
+        LogSortField field, bool descending, string[] expected)
+    {
+        WriteTwoFiles();
+
+        var result = await Journal().SearchAsync(new LogSearch { AllTabs = true, SortBy = field, Descending = descending }, Ct);
+
+        Assert.Equal(expected, result.Entries.Select(row =>
+            row.Entry.Message == "Health check ok" ? $"{row.Entry.Message}@{(row.Entry.Timestamp - Clef.Noon).TotalMinutes}" : row.Entry.Message));
+        Assert.Equal((3, 2), (result.JournalCount, result.ExcludedCount));
+    }
+
+    [Fact]
+    public async Task TheSort_AppliesBeforeTheTabSplit_SoPagesTakenFromItAreConsistent()
+    {
+        WriteTwoFiles();
+        var journal = Journal();
+        var search = new LogSearch { AllTabs = true, SortBy = LogSortField.Category, Descending = false };
+
+        var all = (await journal.SearchAsync(search, Ct)).Entries.Select(row => row.Entry.Message).ToList();
+        var pages = all.Chunk(2).SelectMany(page => page).ToList();
+        var excluded = await journal.SearchAsync(search with { AllTabs = false, Excluded = true }, Ct);
+
+        Assert.Equal(all, pages);
+        Assert.Equal(["Health check ok", "Health check ok"], excluded.Entries.Select(row => row.Entry.Message));
+        Assert.Equal(["App.Health", "App.Health"], excluded.Entries.Select(row => row.Entry.Category));
+        Assert.Equal(LogSortField.Timestamp, new LogSearch().SortBy);
+        Assert.True(new LogSearch().Descending);
+    }
+
     [Fact]
     public async Task TheFilters_KeepTheLevelAndAbove_TheDatesIncluded_AndTheTextIgnoringCase()
     {

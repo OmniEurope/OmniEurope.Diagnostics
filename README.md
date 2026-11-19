@@ -319,9 +319,12 @@ entries it refuses before they are formatted, without counting them as lost; a f
 `AddOmniLogJournal()` (Core package) registers them alone, without pages, Razor components or antiforgery:
 
 - **`ILogJournal`** (scoped): `ListFilesAsync`, `SearchAsync(LogSearch)` (file, minimum level, dates, text, journal
-  or excluded tab; every matching entry newest first, within `MaxBytesRead`, with the tab counts, the rules, the
-  truncation flag and the unreadable lines), `OpenFileAsync` (a shared read stream, null when the name is not a
-  listed file) and `PurgeAsync`. The caller pages and sorts the entries. `LogSearch.Exclusions` takes the caller's
+  or excluded tab; every matching entry within `MaxBytesRead`, newest first by default, with the tab counts, the
+  rules, the truncation flag and the unreadable lines), `OpenFileAsync` (a shared read stream, null when the name is
+  not a listed file) and `PurgeAsync`. `LogSearch.SortBy` (`Timestamp`, `Level` or `Category`) and
+  `LogSearch.Descending` (true by default: newest, most severe, Z to A) order the whole result before the tab
+  split; entries of the same level or category stay newest first. The caller pages the ordered entries
+  (`Skip`/`Take`) without re-sorting, so a virtualized grid stays correct across pages. `LogSearch.Exclusions` takes the caller's
   own exclusions (`LogExclusion`: category and/or message, "contains", case ignored): an entry they match is in
   neither tab nor count. The search reads with asynchronous streams and the opened stream is asynchronous; listing
   and deleting files only touch metadata and run within the call.

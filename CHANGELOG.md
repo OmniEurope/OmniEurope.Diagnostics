@@ -4,6 +4,11 @@ Notable changes to this project are documented here, following the Keep a Change
 
 ## [Unreleased]
 
+### Added
+
+- `LogSearch.SortBy` (`LogSortField`: timestamp, level, category) and `LogSearch.Descending`: `ILogJournal.SearchAsync`
+  orders the whole result, so a host pages it without re-sorting. The default stays newest first.
+
 ## [1.2.0] - 2026-11-17
 
 Version 1.2.0 of the three packages.
