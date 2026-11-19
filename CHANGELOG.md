@@ -4,6 +4,10 @@ Notable changes to this project are documented here, following the Keep a Change
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-11-19
+
+Version 1.2.1 of the three packages.
+
 ### Added
 
 - `LogSearch.SortBy` (`LogSortField`: timestamp, level, category) and `LogSearch.Descending`: `ILogJournal.SearchAsync`

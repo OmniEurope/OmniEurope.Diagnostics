@@ -3,7 +3,7 @@
   <!-- What the three published packages share: one version, one set of NuGet metadata. Each project keeps its
        own id, description and tags. -->
   <PropertyGroup>
-    <Version>1.2.0</Version>
+    <Version>1.2.1</Version>
     <Authors>OmniEurope contributors</Authors>
     <Company>OmniEurope</Company>
     <PackageLicenseExpression>EUPL-1.2</PackageLicenseExpression>
