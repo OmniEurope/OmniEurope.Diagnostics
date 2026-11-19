@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: EUPL-1.2 -->
 # PLAN-004 - Core, ASP.NET Core and MAUI packages, host-recorded operations, embeddable views
 
-Status: implemented on develop (2026-11-12), target version 1.2.0 for the three packages. Proved in the MAUI sample over the WebView2 debugging port: operations in the performance view, logs view filters, details, rules and follow mode. Not yet observed: the Windows save dialog of the export, and the Windows CI job on GitHub.
+Status: implemented on develop (2026-11-12), target version 1.2.0 for the three packages. Proved in the MAUI sample over the WebView2 debugging port: operations in the performance view, logs view filters, details, rules and follow mode. The Windows CI job runs green on GitHub (since the 1.2.0 release, last seen on the 1.2.1 commit). Not yet observed: the Windows save dialog of the export.
 
 ## Why
 
@@ -46,7 +46,7 @@ file, loading a screen) and show them, with its logs, inside its own Blazor page
 6. **Sample and proof**: a MAUI Blazor Hybrid sample (not packed) timing its own operations and showing both views;
    proof by reading the rendered DOM through the WebView2 remote-debugging port.
 7. **CI and docs**: the Ubuntu job builds and tests Core and ASP.NET Core; a Windows job builds the MAUI package and
-   sample; the publish workflow packs the three packages. README (three packages, Hybrid usage, dependencies and
+   sample; each job uploads its packages, and the publish workflow pushes those validated packages without rebuilding. README (three packages, Hybrid usage, dependencies and
    licences) and CHANGELOG.
 
 ## Done when

@@ -13,6 +13,11 @@ Version 1.2.1 of the three packages.
 - `LogSearch.SortBy` (`LogSortField`: timestamp, level, category) and `LogSearch.Descending`: `ILogJournal.SearchAsync`
   orders the whole result, so a host pages it without re-sorting. The default stays newest first.
 
+### Changed
+
+- The release workflow refuses to publish a release whose tag does not point at a commit of `main`, so every
+  published version keeps its tag on `main`.
+
 ## [1.2.0] - 2026-11-17
 
 Version 1.2.0 of the three packages.
@@ -46,8 +51,8 @@ Version 1.2.0 of the three packages.
   `IMauiInitializeService` that also checks the options, localization, and a Windows `FileSavePicker` implementation of
   `ILogFileExport` that a host can replace. `OmniMauiDiagnosticsOptions` sets the folder and pattern and reaches the
   underlying options. A runnable, unpackaged sample lives in `samples/OmniEurope.Diagnostics.Sample.Maui`; the MAUI
-  projects have their own solution, `OmniEurope.Diagnostics.Maui.slnx`, built by a Windows job of continuous
-  integration, which also publishes the package after Core.
+  projects have their own solution, `OmniEurope.Diagnostics.Maui.slnx`, built and packed by a Windows job of continuous
+  integration; the release workflow publishes that package after Core, from the continuous integration artifacts.
 - `OmniLogsView`: the logs as an embeddable, unstyled and interactive Blazor component (Blazor Hybrid or any
   interactive render mode, no HTTP and no script): journal and excluded tabs, filters, pages, entry details, "same
   request", exclusion rules, purge with a confirmation step, follow mode on `ILogChanges`, and, when the host registers

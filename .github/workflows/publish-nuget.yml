@@ -26,10 +26,12 @@ jobs:
         env:
           TAG: ${{ github.event.release.tag_name }}
         run: |
-          $tagSha = (git rev-list -n 1 "refs/tags/$env:TAG").Trim()
-          if ($LASTEXITCODE -ne 0 -or -not $tagSha) { throw "The release tag $env:TAG does not exist." }
+          $fix = "Delete the release and its tag, then create the release again on main (gh release create $env:TAG --target main)."
+          $tagSha = git rev-list -n 1 "refs/tags/$env:TAG" 2>$null
+          if ($LASTEXITCODE -ne 0 -or -not $tagSha) { throw "The release tag $env:TAG does not exist. $fix" }
+          $tagSha = "$tagSha".Trim()
           git merge-base --is-ancestor $tagSha origin/main
-          if ($LASTEXITCODE -ne 0) { throw "The release tag $env:TAG ($tagSha) is not on main." }
+          if ($LASTEXITCODE -ne 0) { throw "The release tag $env:TAG ($tagSha) is not on main: nothing was published. $fix" }
       - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json

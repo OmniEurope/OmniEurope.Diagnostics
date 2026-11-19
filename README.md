@@ -375,8 +375,10 @@ packages: the repository opens no automatic update request.
 
 Git flow: `main` for released versions, `develop` for integration. Contributors branch `feature/*` from `develop` and
 open a pull request to `develop`; the maintainer commits to `develop` directly. A published GitHub release
-(tag `1.0.0` or `v1.0.0`, equal to the version of the three packages) triggers the NuGet publication of the packages
-validated by continuous integration.
+(tag `1.0.0` or `v1.0.0`, equal to the version of the three packages, on a commit of `main`) triggers the NuGet
+publication of the packages validated by continuous integration. Create it on `main`
+(`gh release create <version> --target main`): the publication refuses a release whose tag is not on `main` and
+publishes nothing, the release and its tag then have to be deleted and created again on `main`.
 
 ## Licence
 

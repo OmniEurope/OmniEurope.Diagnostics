@@ -200,12 +200,16 @@ public sealed class LogsEndpointTests : IDisposable
             }
             catch (Exception exception) when (exception is UnauthorizedAccessException or IOException or PlatformNotSupportedException)
             {
-                return; // creating a link needs a privilege some machines do not grant: nothing to prove here
+                // Creating a link needs a privilege some machines do not grant: report the test as not proved.
+                Assert.Skip($"Symbolic link creation is not permitted here ({exception.GetType().Name}).");
             }
             await using var host = await LogsHost.StartAsync(_folder.Path);
 
+            var page = await host.GetHtmlAsync("/logs");
             var response = await host.Client.GetAsync("/logs/download?file=app-linked.json", Ct);
 
+            Assert.Contains("<option>app-20261107.json</option>", page, StringComparison.Ordinal);
+            Assert.DoesNotContain("app-linked.json", page, StringComparison.Ordinal);
             Assert.NotEqual(HttpStatusCode.OK, response.StatusCode);
         }
         finally

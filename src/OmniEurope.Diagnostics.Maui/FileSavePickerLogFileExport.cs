@@ -8,8 +8,8 @@ namespace OmniEurope.Diagnostics.Maui;
 /// <summary>
 /// Offers an exported log file through the Windows save dialog (<see cref="FileSavePicker"/>), initialized with the
 /// handle of the application's current window as an unpackaged desktop application requires. Cancelling the dialog
-/// ends the export without writing anything. Not covered by unit tests, which cannot drive a system dialog: the
-/// sample application exercises it.
+/// ends the export without writing anything. Not covered by unit tests, which cannot drive a system dialog, and not
+/// yet observed in the sample application.
 /// </summary>
 internal sealed class FileSavePickerLogFileExport : ILogFileExport
 {

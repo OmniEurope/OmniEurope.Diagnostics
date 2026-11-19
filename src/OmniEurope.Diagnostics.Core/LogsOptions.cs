@@ -40,9 +40,11 @@ public sealed class LogsOptions
     /// <summary>
     /// The log files of <see cref="Directory"/>, as one or more file-name patterns separated by <c>;</c> (<c>*</c> and
     /// <c>?</c> wildcards, no path; <c>*.json;*.log</c>, say): <see cref="DefaultFilePattern"/> by default. Only these
-    /// files are listed, read, downloaded and purged. A file ending in <c>.log</c> is read as plain text: every
-    /// non-empty line is an entry, its whole text the message, level Information, timestamped by the ISO date it
-    /// starts with, else by the previous line's, else by the file's last write.
+    /// files are listed, read, downloaded and purged. A file ending in <c>.log</c> is read as plain text: a line
+    /// starting with an ISO date (bare or between brackets) opens an entry, a level name after it sets its level
+    /// (Information otherwise) and a word ending with a colon right after the level its category; the following lines
+    /// without a date continue its message, and lines made only of dashes or equal signs are skipped. A file without
+    /// dates keeps one entry per line, dated by the file's last write.
     /// </summary>
     public string FilePattern { get; set; } = DefaultFilePattern;
 
